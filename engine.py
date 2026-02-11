@@ -3,6 +3,9 @@ import requests
 from pathlib import Path
 
 SPICE_FILE = Path("spice.json")
+THEME_FILE = Path("themes.json")
+
+
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_URL = f"{OLLAMA_BASE_URL}/api/chat"
 OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
@@ -13,20 +16,44 @@ def load_spice_levels():
     with open(SPICE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def load_themes():
+    with open(THEME_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 def clamp_level(level: int) -> int:
     """Keep level between 1 and 10."""
     return max(1, min(level, 10))
 
 
-def build_prompt(theme: str, style: str, level: int, spice_data: dict) -> str:
-    """Assemble the text prompt for the LLM."""
+def build_prompt(theme: str, style: str, level: int, spice_data: dict, theme_data: dict) -> str:
     lvl = str(clamp_level(level))
     spice_desc = spice_data.get(lvl, "playful and flirty energy")
-    theme = theme.strip() or "general charm"
-    style = style.strip() or "romantic"
-    return f"Generate a {style} pick-up line based on {theme}, written with {spice_desc}."
 
+    theme_key = theme.strip().lower()
+    anchors = theme_data.get(theme_key, [])
+
+    if anchors:
+        enriched_theme = f"{theme_key} (include references to: {', '.join(anchors)})"
+    else:
+        enriched_theme = theme_key or "general charm"
+
+    return f"""
+You generate sharp, original flirt lines for live chat.
+
+Constraints:
+- One single sentence.
+- Avoid generic compliments.
+- Be specific to the theme.
+- Twitch-safe.
+- Clever and memorable.
+
+Style: {style}
+Theme: {enriched_theme}
+Energy: {spice_desc}
+
+Generate one line.
+""".strip()
 
 def ask_ollama(prompt: str, model: str = "dolphin3:8b") -> str:
     """Send prompt to Ollama and stream the response until done.
@@ -91,9 +118,12 @@ def ask_ollama(prompt: str, model: str = "dolphin3:8b") -> str:
 
     chat_payload = {
         "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
+        "options": {
+            "num_predict": 40,
+            "temperature": 0.9,
+            "top_p": 0.95
+        }
     }
 
     try:
