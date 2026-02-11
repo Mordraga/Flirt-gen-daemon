@@ -29,7 +29,11 @@ def build_prompt(theme: str, style: str, level: int, spice_data: dict) -> str:
 
 
 def ask_ollama(prompt: str, model: str = "dolphin3:8b") -> str:
-    """Send prompt to Ollama and stream the response until done."""
+    """Send prompt to Ollama and stream the response until done.
+
+    Supports both /api/chat (yields token deltas under message.content)
+    and /api/generate (yields token deltas under response).
+    """
 
     def _stream(url: str, payload: dict) -> str:
         with requests.post(url, json=payload, stream=True, timeout=120) as r:
@@ -43,8 +47,14 @@ def ask_ollama(prompt: str, model: str = "dolphin3:8b") -> str:
                 if not line:
                     continue
                 data = json.loads(line.decode("utf-8"))
-                if "response" in data:
+                # /api/generate streaming shape
+                if "response" in data and isinstance(data.get("response"), str):
                     collected.append(data["response"])
+                # /api/chat streaming shape
+                elif isinstance(data.get("message"), dict):
+                    content = data["message"].get("content")
+                    if isinstance(content, str):
+                        collected.append(content)
                 if data.get("done"):
                     break
             return "".join(collected).strip()
