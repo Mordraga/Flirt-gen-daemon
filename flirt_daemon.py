@@ -5,9 +5,10 @@ from engine import (
     load_themes, 
     is_vague_input,
     pick_random_theme,
-    build_smart_prompt,
     build_specific_prompt,
-    ask_openrouter
+    ask_openrouter,
+    load_redaction,
+    apply_redaction
 )
 
 
@@ -23,7 +24,7 @@ def parse_input(text):
     if not text:
         return theme, style, level
 
-    parts = re.split(r"[,\-]", text)
+    parts = re.split(r"[,\-\s]+", text)
 
     if len(parts) >= 1 and parts[0].strip():
         theme = parts[0].strip().lower()
@@ -42,7 +43,7 @@ def parse_input(text):
 
 
 if __name__ == "__main__":
-    raw_input = sys.argv[1] if len(sys.argv) > 1 else ""
+    raw_input = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else ""
 
     theme, style, level = parse_input(raw_input)
     
@@ -50,7 +51,9 @@ if __name__ == "__main__":
     theme_data = load_themes()
 
     # HYBRID ROUTING
-    if is_vague_input(theme, style, level):
+    if is_vague_input(theme, style, level, theme_data):
+        theme, style, level = pick_random_theme(theme_data, spice_data)
+
         # User is being vague - pick random theme instead of meta commentary
         theme, style, level = pick_random_theme(theme_data)
         prompt = build_specific_prompt(theme, style, level, spice_data, theme_data)
@@ -60,6 +63,10 @@ if __name__ == "__main__":
         prompt = build_specific_prompt(theme, style, level, spice_data, theme_data)
 
     result = ask_openrouter(prompt).strip()
+    redaction_data = load_redaction()
+    print("LEVEL:", level)
+    print("RAW:", result)
+    result = apply_redaction(result, level, redaction_data, style="divine")
 
     # Write to file
     with open("flirt_output.txt", "w", encoding="utf-8") as f:

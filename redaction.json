@@ -1,0 +1,50 @@
+{
+  "styles": {
+    "corporate": [
+      "[REDACTED]",
+      "[CLASSIFIED]",
+      "[CONTENT REMOVED]",
+      "[EXPUNGED]",
+      "[BLACKED OUT]"
+    ],
+    "divine": [
+      "[Redacted by Astarte]",
+      "[Sealed by Thoth]",
+      "[Withheld by Set]",
+      "[Censored by Lilith]",
+      "[Veiled by Hekate]",
+      "[Forbidden by Freya]"
+    ],
+    "occult": [
+      "[SEALED]",
+      "[SIGIL OBSCURED]",
+      "[INK RUNS BLACK HERE]",
+      "[PROTECTION SIGIL HERE]",
+      "[ARCANE VEIL DRAWN]",
+      "[SHADOWED BY THE VOID]"
+    ],
+    "runic": [
+      "[ᚱᚢᚾᛖ - Bound by Odin]",
+      "[ᛉᛟᛚᛞ - Sealed in Futhark]",
+      "[ᚹᛁᚦᚺᛖᛚᛞ - Withheld by Thor]",
+      "[ᛒᛁᚾᛞᚱᚢᚾᛖ - Rune-Blotted]",
+      "[ᚠᚢᚦᚨᚱᚲ - Elder Concealment]"
+    ],
+    "hieroglyphic": [
+      "[𓂀 - Eye of Horus Conceals]",
+      "[𓆣 - Scarab Seals Away]",
+      "[𓋹 - Ankh Withholds]",
+      "[𓅓 - Owl of Thoth Redacts]",
+      "[𓆄 - Feather of Ma'at Veils]"
+    ],
+    "eldritch": [
+      "[IA! - Void Whispered]",
+      "[CTHULHU FHTAGN - Submerged]",
+      "[NYARLATHOTEP - Crawling Chaos Hides]",
+      "[YOG-SOTHOTH - Gate Locked]",
+      "[SHUB-NIGGURATH - Black Goat Conceals]"
+    ]
+  },
+  "threshold": 7,
+  "max_replacements": 2
+}
