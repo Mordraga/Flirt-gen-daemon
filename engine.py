@@ -1,6 +1,6 @@
 import json
 import requests
-import random
+import os
 from pathlib import Path
 
 SPICE_FILE = Path("spice.json")
@@ -39,128 +39,31 @@ def load_keys():
 
 
 # =============================
-# Smart Input Detection
+# Prompt Builder
 # =============================
 
-def is_vague_input(theme: str, style: str, level: int) -> bool:
-    """Detect if user input is vague/requesting AI to decide"""
-    vague_keywords = ["idk", "surprise", "random", "whatever", "anything", "dunno"]
-    
-    # Check if theme contains vague language
-    if any(keyword in theme.lower() for keyword in vague_keywords):
-        return True
-    
-    # If theme is empty or generic
-    if not theme or theme.lower() in ["general", ""]:
-        return True
-    
-    return False
-
-
-def pick_random_theme(theme_data: dict) -> tuple:
-    """Pick a random top-level theme with appropriate spice"""
-    # Filter out themes with subtopics for simplicity in vague mode
-    simple_themes = {k: v for k, v in theme_data.items() 
-                     if "subtopics" not in v}
-    
-    if not simple_themes:
-        simple_themes = theme_data
-    
-    theme_key = random.choice(list(simple_themes.keys()))
-    theme_info = simple_themes[theme_key]
-    
-    # Pick spice level from theme's range
-    spice_range = theme_info.get("spice_range", [3, 6])
-    spice_level = random.randint(spice_range[0], spice_range[1])
-    
-    # Pick random style
-    styles = ["clever", "playful", "bold", "sultry", "teasing"]
-    style = random.choice(styles)
-    
-    return theme_key, style, spice_level
-
-
-# =============================
-# Prompt Builders
-# =============================
-
-def build_smart_prompt(user_input: str, theme_data: dict, spice_data: dict) -> str:
-    """Build prompt for vague input - let LLM choose from metadata"""
-    
-    # Build metadata summary (top-level themes only, no subtopics)
-    theme_summary = []
-    for theme_key, theme_info in theme_data.items():
-        category = theme_info.get("category", "general")
-        spice_range = theme_info.get("spice_range", [3, 6])
-        description = theme_info.get("description", "")
-        theme_summary.append(
-            f"- {theme_key} ({category}): {description} [spice {spice_range[0]}-{spice_range[1]}]"
-        )
-    
-    themes_text = "\n".join(theme_summary)
-    
-    return f"""
-You generate sharp, punchy flirt lines for an 18+ stream chat.
-
-The user said: "{user_input}"
-
-Available themes:
-{themes_text}
-
-Based on the user's vague request, pick an appropriate theme and spice level, then generate a flirt line.
-
-Rules:
-- Maximum 15-20 words total
-- One complete sentence only (no em-dashes, no multiple clauses)
-- No asterisks, no italics, no formatting marks
-- Match the spice level authentically - don't sanitize
-- Deliver the punchline fast
-
-Output the flirt line only. No preamble, no explanation, no metadata.
-""".strip()
-
-
-def build_specific_prompt(theme: str, style: str, level: int, spice_data: dict, theme_data: dict) -> str:
-    """Build prompt for specific input - user knows what they want"""
+def build_prompt(theme: str, style: str, level: int, spice_data: dict, theme_data: dict) -> str:
     lvl = str(clamp_level(level))
     spice_desc = spice_data.get(lvl, "playful and flirty energy")
 
     theme_key = theme.strip().lower()
-    
-    # Check if this is a subtopic (format: "theme.subtopic")
-    if "." in theme_key:
-        parent_theme, subtopic = theme_key.split(".", 1)
-        theme_info = theme_data.get(parent_theme, {})
-        
-        if "subtopics" in theme_info and subtopic in theme_info["subtopics"]:
-            subtopic_info = theme_info["subtopics"][subtopic]
-            basics = subtopic_info.get("basics", "")
-            anchors = subtopic_info.get("anchors", [])
-            
-            context_block = f"\n\nSubtopic: {subtopic}\nContext: {basics}"
-            if anchors:
-                context_block += f"\nExamples: {', '.join(anchors[:5])}"
-        else:
-            # Fallback if subtopic not found
-            context_block = ""
-    else:
-        # Regular top-level theme
-        theme_info = theme_data.get(theme_key, {})
-        anchors = theme_info.get("anchors", [])
-        
-        context_block = ""
-        if anchors:
-            context_block = f"\n\nContext for {theme_key}:\n{', '.join(anchors[:5])}"
+    anchors = theme_data.get(theme_key, [])
+
+    # Build context block if anchors exist
+    context_block = ""
+    if anchors:
+        context_block = f"\n\nContext for {theme_key} theme:\n{', '.join(anchors[:5])}"  # Limit to 5 for brevity
 
     return f"""
-You generate sharp, punchy flirt lines for an 18+ stream chat.
+You are MaidensAcquisistions.AI, or MA.AI, or Mai.
+You generate sharp, punchy flirt lines for Twitch chat.
 
 Rules:
 - Maximum 15-20 words total
 - One complete sentence only (no em-dashes, no multiple clauses)
 - Capture the vibe and atmosphere of the theme naturally
 - No asterisks, no italics, no formatting marks
-- Match the spice level authentically - don't sanitize
+- Twitch-safe language only
 - Deliver the punchline fast
 
 Style: {style}
