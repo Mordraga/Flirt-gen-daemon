@@ -1,0 +1,8 @@
+{
+  "backend": "openrouter",
+  "model": "mistralai/mistral-7b-instruct",
+  "max_tokens": 60,
+  "temperature_normal": 0.85,
+  "temperature_spicy": 0.95,
+  "timeout": 30
+}

@@ -1,34 +1,272 @@
 {
-  "vtubing": [
-    "Live2D rigs",
-    "model tracking",
-    "chat redeems",
-    "OBS crashes",
-    "debut streams",
-    "PNG toggles",
-    "face tracking glitches",
-    "bits and donos"
-  ],
-  "coffee": [
-    "espresso shots",
-    "latte art hearts",
-    "cozy café corners",
-    "warm mugs in cold hands",
-    "barista eye contact",
-    "cinnamon foam",
-    "rainy window mornings"
-  ],
-  "biting": [
-    "playful nibbles",
-    "gentle bites",
-    "teasing chomps",
-    "sensual nibbling"
-  ],
-  "military": [
-    "saluting",
-    "marching",
-    "drill commands",
-    "camouflage",
-    "rank insignia"
-  ]
+  "vtubing": {
+    "category": "wholesome",
+    "spice_range": [2, 5],
+    "description": "Streaming culture and VTuber life",
+    "anchors": [
+      "your Live2D rig tracking every smile",
+      "when your model glitches in the cutest way",
+      "redeeming chat points just to see you react",
+      "that moment OBS crashes and you break character",
+      "face tracking catching your genuine laugh",
+      "bits and donos making you blush on stream"
+    ]
+  },
+  "coffee": {
+    "category": "romantic",
+    "spice_range": [2, 6],
+    "description": "Café romance and warm beverages",
+    "anchors": [
+      "sharing espresso shots and lingering glances",
+      "watching you create latte art hearts for me",
+      "cozy corner booth conversations that last for hours",
+      "the way you wrap both hands around a warm mug",
+      "rainy mornings pressed against café windows together",
+      "steam rising between us over fresh brew"
+    ]
+  },
+  "biting": {
+    "category": "spicy",
+    "spice_range": [4, 8],
+    "description": "Playful to intense biting and marking",
+    "anchors": [
+      "playful nibbles on your lower lip",
+      "gentle bites that leave you wanting more",
+      "teasing chomps on your neck",
+      "the way you bite your lip when nervous",
+      "love bites as punctuation marks",
+      "that sharp intake of breath when I bite down",
+      "the mark I leave behind to remember me by"
+    ]
+  },
+  "military": {
+    "category": "power",
+    "spice_range": [3, 7],
+    "description": "Respect, discipline, and authority dynamics",
+    "anchors": [
+      "snapping to attention when you walk in",
+      "following your commands without question",
+      "the way you wear confidence like a uniform",
+      "drill sergeant intensity in those eyes",
+      "respect and desire standing at attention",
+      "reporting for duty in your presence"
+    ]
+  },
+  "pagan": {
+    "category": "mystical",
+    "spice_range": [4, 8],
+    "description": "Witchcraft, worship, and devotional energy",
+    "anchors": [
+      "altar offerings left at your feet",
+      "moonlight rituals and whispered prayers",
+      "the divinity in your touch",
+      "worshipping you like the goddess you are",
+      "sabbat fires reflected in your eyes",
+      "devotion that borders on possession",
+      "my knees hitting the floor in reverence"
+    ]
+  },
+  "astarte": {
+    "category": "divine",
+    "spice_range": [5, 10],
+    "description": "Goddess of love and war, sacred feminine power",
+    "anchors": [
+      "goddess of love and war combined",
+      "star of the morning lighting my path",
+      "fertility and destruction in equal measure",
+      "the sacred and profane intertwined",
+      "Ishtar's fire burning in your gaze",
+      "Venus rising with lethal grace",
+      "worship that leaves marks"
+    ]
+  },
+  "witchcraft": {
+    "category": "mystical",
+    "spice_range": [4, 8],
+    "description": "Spells, potions, and magical seduction",
+    "anchors": [
+      "spellwork that binds us together",
+      "the magic in your fingertips",
+      "hexing anyone who looks at you wrong",
+      "your grimoire of secret desires",
+      "candlelight casting shadows between us",
+      "tarot cards predicting our inevitable collision",
+      "bewitched doesn't begin to cover it"
+    ]
+  },
+  "occult": {
+    "category": "dark",
+    "spice_range": [5, 9],
+    "description": "Forbidden knowledge and shadow work",
+    "anchors": [
+      "forbidden knowledge in your smile",
+      "summoning circles drawn around my bed",
+      "the darkness you embrace so beautifully",
+      "blood moon energy coursing through you",
+      "sigils carved into skin and memory",
+      "the Left Hand Path you walk confidently",
+      "shadow work that gets uncomfortably intimate"
+    ]
+  },
+  "bunny": {
+    "category": "playful",
+    "spice_range": [2, 7],
+    "description": "Soft exterior with hidden intensity",
+    "anchors": [
+      "those soft ears twitching when you're nervous",
+      "cotton tail energy with dangerous eyes",
+      "quick and elusive but worth the chase",
+      "nibbling on everything including my attention",
+      "bouncing energy that's impossible to ignore",
+      "Easter egg surprises in every conversation"
+    ]
+  },
+  "bdsm": {
+    "category": "kinky",
+    "spice_range": [6, 10],
+    "description": "Power exchange and consensual control",
+    "subtopics": {
+      "petplay": {
+        "basics": "Owner/pet dynamic with training and rewards",
+        "anchors": [
+          "collar and leash waiting for you",
+          "good pet praise that makes me melt",
+          "training commands I'm eager to follow",
+          "treats and rewards for obedience",
+          "the way you say 'sit' and I drop",
+          "earning headpats and affection"
+        ]
+      },
+      "cageplay": {
+        "basics": "Confinement and control dynamics",
+        "anchors": [
+          "locked up and safe in your control",
+          "the cage as my sacred space",
+          "earning release through devotion",
+          "captive and content",
+          "bars between us making freedom sweeter",
+          "confinement that feels like care"
+        ]
+      },
+      "impact": {
+        "basics": "Consensual striking for pleasure and sensation",
+        "anchors": [
+          "marks left behind as proof",
+          "the sound before the sting",
+          "counting for you between breaths",
+          "bruises worn like badges",
+          "the crack that makes me gasp",
+          "pain and pleasure beautifully blurred"
+        ]
+      },
+      "service": {
+        "basics": "Acts of devotion and servitude",
+        "anchors": [
+          "kneeling to serve your needs",
+          "anticipating your desires",
+          "finding purpose in your commands",
+          "the honor of being useful",
+          "submission as my offering",
+          "service that feels like worship"
+        ]
+      },
+      "restraints": {
+        "basics": "Bondage and controlled movement",
+        "anchors": [
+          "rope patterns decorating my skin",
+          "the trust in being tied",
+          "struggling just to feel the hold",
+          "bound and beautifully helpless",
+          "knots that tell a story",
+          "restrained and entirely yours"
+        ]
+      }
+    },
+    "anchors": [
+      "the power exchange between us",
+      "safe words and sacred trust",
+      "dominance that demands devotion",
+      "submission freely given",
+      "negotiated pleasure and pain",
+      "aftercare wrapped in tenderness"
+    ]
+  },
+  "gaming": {
+    "category": "casual",
+    "spice_range": [2, 5],
+    "description": "Gaming culture and competitive energy",
+    "anchors": [
+      "carrying you through ranked matches",
+      "that clutch moment that made you scream",
+      "staying up way too late for one more round",
+      "your competitive fire when you're in the zone",
+      "rage quitting then immediately queuing again",
+      "co-op sessions that feel like perfection"
+    ]
+  },
+  "cooking": {
+    "category": "romantic",
+    "spice_range": [2, 6],
+    "description": "Kitchen intimacy and shared meals",
+    "anchors": [
+      "tasting sauce from your spoon",
+      "the flour dusted across your cheek",
+      "sharing wine while dinner simmers",
+      "kitchen dancing between prep and plating",
+      "apron strings I want to untie",
+      "your secret ingredient that makes everything better"
+    ]
+  },
+  "books": {
+    "category": "intellectual",
+    "spice_range": [2, 6],
+    "description": "Literary romance and shared stories",
+    "anchors": [
+      "recommending your favorite book to me",
+      "dog-eared pages marking the scenes that made you feel",
+      "your annotations in the margins",
+      "catching you completely lost in a story",
+      "the way you smell like old bookshops",
+      "debating character choices over coffee"
+    ]
+  },
+  "music": {
+    "category": "romantic",
+    "spice_range": [2, 6],
+    "description": "Shared playlists and musical connection",
+    "anchors": [
+      "sharing one earbud on a crowded train",
+      "the song that always makes you emotional",
+      "making playlists as love letters",
+      "concert memories and matching bracelets",
+      "dancing in the kitchen to old vinyl",
+      "your voice when you think no one's listening"
+    ]
+  },
+  "art": {
+    "category": "creative",
+    "spice_range": [2, 6],
+    "description": "Creative passion and artistic appreciation",
+    "anchors": [
+      "paint-stained fingers and focused eyes",
+      "the way you see beauty in everything",
+      "sketching me when you think I don't notice",
+      "your messy studio as organized chaos",
+      "color theory debates that get too heated",
+      "gallery dates analyzing every piece"
+    ]
+  },
+  "fitness": {
+    "category": "athletic",
+    "spice_range": [3, 7],
+    "description": "Gym chemistry and physical dedication",
+    "anchors": [
+      "spotting each other at the gym",
+      "your post-workout glow and messy hair",
+      "competing over PRs and rep counts",
+      "the determination in your eyes during sets",
+      "sharing water bottles between exercises",
+      "rest days spent recovering together"
+    ]
+  }
 }

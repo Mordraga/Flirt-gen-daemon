@@ -1,11 +1,21 @@
 import sys
 import re
-from engine import load_spice_levels, build_prompt, ask_ollama, load_themes
+from engine import (
+    load_spice_levels, 
+    load_themes, 
+    is_vague_input,
+    pick_random_theme,
+    build_smart_prompt,
+    build_specific_prompt,
+    ask_openrouter
+)
 
-MAX_SPICE = 7
+
+MAX_SPICE = 10  # Updated to match new spice.json
 
 
 def parse_input(text):
+    """Parse user input into theme, style, level"""
     theme = "general"
     style = "clever"
     level = 3
@@ -13,7 +23,6 @@ def parse_input(text):
     if not text:
         return theme, style, level
 
-    # split on commas or hyphens
     parts = re.split(r"[,\-]", text)
 
     if len(parts) >= 1 and parts[0].strip():
@@ -36,12 +45,22 @@ if __name__ == "__main__":
     raw_input = sys.argv[1] if len(sys.argv) > 1 else ""
 
     theme, style, level = parse_input(raw_input)
-
+    
     spice_data = load_spice_levels()
     theme_data = load_themes()
 
-    prompt = build_prompt(theme, style, level, spice_data, theme_data)
+    # HYBRID ROUTING
+    if is_vague_input(theme, style, level):
+        # User is being vague - pick random theme instead of meta commentary
+        theme, style, level = pick_random_theme(theme_data)
+        prompt = build_specific_prompt(theme, style, level, spice_data, theme_data)
+        
+    else:
+        # User gave specifics - generate directly
+        prompt = build_specific_prompt(theme, style, level, spice_data, theme_data)
 
-    result = ask_ollama(prompt, model="qwen2.5:3b")
+    result = ask_openrouter(prompt).strip()
 
-    print(result.strip())
+    # Write to file
+    with open("flirt_output.txt", "w", encoding="utf-8") as f:
+        f.write(result)
