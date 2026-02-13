@@ -1,7 +1,6 @@
 {
   "vtubing": {
     "category": "wholesome",
-    "spice_range": [2, 5],
     "description": "Streaming culture and VTuber life",
     "anchors": [
       "your Live2D rig tracking every smile",
@@ -14,7 +13,6 @@
   },
   "coffee": {
     "category": "romantic",
-    "spice_range": [2, 6],
     "description": "Café romance and warm beverages",
     "anchors": [
       "sharing espresso shots and lingering glances",
@@ -27,7 +25,6 @@
   },
   "biting": {
     "category": "spicy",
-    "spice_range": [4, 8],
     "description": "Playful to intense biting and marking",
     "anchors": [
       "playful nibbles on your lower lip",
@@ -41,7 +38,6 @@
   },
   "military": {
     "category": "power",
-    "spice_range": [3, 7],
     "description": "Respect, discipline, and authority dynamics",
     "anchors": [
       "snapping to attention when you walk in",
@@ -54,7 +50,6 @@
   },
   "pagan": {
     "category": "mystical",
-    "spice_range": [4, 8],
     "description": "Witchcraft, worship, and devotional energy",
     "anchors": [
       "altar offerings left at your feet",
@@ -68,7 +63,6 @@
   },
   "astarte": {
     "category": "divine",
-    "spice_range": [5, 10],
     "description": "Goddess of love and war, sacred feminine power",
     "anchors": [
       "goddess of love and war combined",
@@ -82,7 +76,6 @@
   },
   "witchcraft": {
     "category": "mystical",
-    "spice_range": [4, 8],
     "description": "Spells, potions, and magical seduction",
     "anchors": [
       "spellwork that binds us together",
@@ -96,7 +89,6 @@
   },
   "occult": {
     "category": "dark",
-    "spice_range": [5, 9],
     "description": "Forbidden knowledge and shadow work",
     "anchors": [
       "forbidden knowledge in your smile",
@@ -110,7 +102,6 @@
   },
   "bunny": {
     "category": "playful",
-    "spice_range": [2, 7],
     "description": "Soft exterior with hidden intensity",
     "anchors": [
       "those soft ears twitching when you're nervous",
@@ -123,65 +114,7 @@
   },
   "bdsm": {
     "category": "kinky",
-    "spice_range": [6, 10],
     "description": "Power exchange and consensual control",
-    "subtopics": {
-      "petplay": {
-        "basics": "Owner/pet dynamic with training and rewards",
-        "anchors": [
-          "collar and leash waiting for you",
-          "good pet praise that makes me melt",
-          "training commands I'm eager to follow",
-          "treats and rewards for obedience",
-          "the way you say 'sit' and I drop",
-          "earning headpats and affection"
-        ]
-      },
-      "cageplay": {
-        "basics": "Confinement and control dynamics",
-        "anchors": [
-          "locked up and safe in your control",
-          "the cage as my sacred space",
-          "earning release through devotion",
-          "captive and content",
-          "bars between us making freedom sweeter",
-          "confinement that feels like care"
-        ]
-      },
-      "impact": {
-        "basics": "Consensual striking for pleasure and sensation",
-        "anchors": [
-          "marks left behind as proof",
-          "the sound before the sting",
-          "counting for you between breaths",
-          "bruises worn like badges",
-          "the crack that makes me gasp",
-          "pain and pleasure beautifully blurred"
-        ]
-      },
-      "service": {
-        "basics": "Acts of devotion and servitude",
-        "anchors": [
-          "kneeling to serve your needs",
-          "anticipating your desires",
-          "finding purpose in your commands",
-          "the honor of being useful",
-          "submission as my offering",
-          "service that feels like worship"
-        ]
-      },
-      "restraints": {
-        "basics": "Bondage and controlled movement",
-        "anchors": [
-          "rope patterns decorating my skin",
-          "the trust in being tied",
-          "struggling just to feel the hold",
-          "bound and beautifully helpless",
-          "knots that tell a story",
-          "restrained and entirely yours"
-        ]
-      }
-    },
     "anchors": [
       "the power exchange between us",
       "safe words and sacred trust",
@@ -193,7 +126,6 @@
   },
   "gaming": {
     "category": "casual",
-    "spice_range": [2, 5],
     "description": "Gaming culture and competitive energy",
     "anchors": [
       "carrying you through ranked matches",
@@ -206,7 +138,6 @@
   },
   "cooking": {
     "category": "romantic",
-    "spice_range": [2, 6],
     "description": "Kitchen intimacy and shared meals",
     "anchors": [
       "tasting sauce from your spoon",
@@ -219,7 +150,6 @@
   },
   "books": {
     "category": "intellectual",
-    "spice_range": [2, 6],
     "description": "Literary romance and shared stories",
     "anchors": [
       "recommending your favorite book to me",
@@ -232,7 +162,6 @@
   },
   "music": {
     "category": "romantic",
-    "spice_range": [2, 6],
     "description": "Shared playlists and musical connection",
     "anchors": [
       "sharing one earbud on a crowded train",
@@ -245,7 +174,6 @@
   },
   "art": {
     "category": "creative",
-    "spice_range": [2, 6],
     "description": "Creative passion and artistic appreciation",
     "anchors": [
       "paint-stained fingers and focused eyes",
@@ -258,7 +186,6 @@
   },
   "fitness": {
     "category": "athletic",
-    "spice_range": [3, 7],
     "description": "Gym chemistry and physical dedication",
     "anchors": [
       "spotting each other at the gym",
@@ -267,6 +194,42 @@
       "the determination in your eyes during sets",
       "sharing water bottles between exercises",
       "rest days spent recovering together"
+    ]
+  },
+  "general": {
+    "category": "general",
+    "description": "Versatile themes for any occasion",
+    "anchors": [
+      "the way you look at me when you think I'm not paying attention",
+      "that smile that makes my heart skip",
+      "the sound of your laugh that I want to hear forever",
+      "the way you say my name like it's a secret",
+      "our inside jokes that no one else gets",
+      "the little things you do that make me fall harder"
+    ]
+  },
+  "chocolate": {
+    "category": "sweet",
+    "description": "Indulgent and irresistible chocolate themes",
+    "anchors": [
+      "the way you melt my heart like chocolate in the sun",
+      "sharing a bar of chocolate and stealing bites",
+      "the sweetness in your smile that I crave",
+      "chocolate-smeared kisses that leave me breathless",
+      "your love as rich and decadent as dark chocolate",
+      "the way you satisfy my cravings in every way"
+    ]
+  },
+  "candy": {
+    "category": "sweet",
+    "description": "Playful and colorful candy themes",
+    "anchors": [
+      "the way you light up like a candy store",
+      "sharing a bag of sweets and stealing pieces",
+      "your smile as bright and irresistible as candy",
+      "candy-coated kisses that leave me wanting more",
+      "your love as fun and addictive as my favorite treat",
+      "the way you satisfy my sweet tooth in every way"
     ]
   }
 }

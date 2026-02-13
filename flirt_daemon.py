@@ -1,73 +1,52 @@
 import sys
-import re
-from engine import (
-    load_spice_levels, 
-    load_themes, 
-    is_vague_input,
-    pick_random_theme,
-    build_specific_prompt,
-    ask_openrouter,
-    load_redaction,
-    apply_redaction
-)
-
-
-MAX_SPICE = 10  # Updated to match new spice.json
-
-
-def parse_input(text):
-    """Parse user input into theme, style, level"""
-    theme = "general"
-    style = "clever"
-    level = 3
-
-    if not text:
-        return theme, style, level
-
-    parts = re.split(r"[,\-\s]+", text)
-
-    if len(parts) >= 1 and parts[0].strip():
-        theme = parts[0].strip().lower()
-
-    if len(parts) >= 2 and parts[1].strip():
-        style = parts[1].strip().lower()
-
-    if len(parts) >= 3:
-        try:
-            level = int(parts[2].strip())
-        except ValueError:
-            pass
-
-    level = max(1, min(level, MAX_SPICE))
-    return theme, style, level
-
+import json
+import requests
+from helpers import load_json, apply_redaction, log_event, write_to_file
+from engine import build_specific_prompt, ask_openrouter
 
 if __name__ == "__main__":
-    raw_input = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else ""
 
-    theme, style, level = parse_input(raw_input)
+    log_event("flirt_daemon_started", {"args": sys.argv}, "logs/calls/calls.json")
+
+    if len(sys.argv) != 4:
+        print("Usage: python flirt_daemon.py <theme> <tone> <spice_level>")
+        sys.exit(1)
+
+    theme = sys.argv[1]
+    tone = sys.argv[2]
+    try:
+        level = int(sys.argv[3])
+    except ValueError:
+        print("Spice level must be an integer.")
+        sys.exit(1)
+
+    prompt = build_specific_prompt(theme, tone, level)
+    flirt_line = ask_openrouter(prompt)
+
+    redacted_flirt_line = apply_redaction(flirt_line, level, load_json("data/redaction.json").get("redaction", {}))
+
+    print(f"THEME: {theme}, TONE: {tone}, SPICE LEVEL: {level}\n"
+          f"THEME DESC: {load_json('data/themes.json').get(theme, {}).get('description', 'N/A')}\n"
+          f"TONE DESC: {load_json('data/tone.json').get(tone, {}).get('description', 'N/A')}\n"
+          f"SPICE DESC: {load_json('data/spice.json').get(str(level), {}).get('description', 'N/A')}\n"
+          f"FLIRT LINE: {flirt_line} \n"
+          f"REDACTED FLIRT LINE: {redacted_flirt_line}")
     
-    spice_data = load_spice_levels()
-    theme_data = load_themes()
+    redaction_data = load_json("data/redaction.json").get("max_replacements", {})
 
-    # HYBRID ROUTING
-    if is_vague_input(theme, style, level, theme_data):
-        theme, style, level = pick_random_theme(theme_data, spice_data)
+    log_event("flirt_generated", {
+        "theme": theme,
+        "tone": tone,
+        "level": level,
+        "flirt_line": flirt_line,
+        "redacted_flirt_line": redacted_flirt_line
+    }, "logs/history/flirt_history.json")
 
-        # User is being vague - pick random theme instead of meta commentary
-        theme, style, level = pick_random_theme(theme_data)
-        prompt = build_specific_prompt(theme, style, level, spice_data, theme_data)
-        
-    else:
-        # User gave specifics - generate directly
-        prompt = build_specific_prompt(theme, style, level, spice_data, theme_data)
+    log_event("prompt_made", {
+        "theme": theme,
+        "tone": tone,
+        "level": level,
+        "prompt": prompt
+    }, "logs/prompts/prompt_history.json")    
 
-    result = ask_openrouter(prompt).strip()
-    redaction_data = load_redaction()
-    print("LEVEL:", level)
-    print("RAW:", result)
-    result = apply_redaction(result, level, redaction_data, style="divine")
-
-    # Write to file
-    with open("flirt_output.txt", "w", encoding="utf-8") as f:
-        f.write(result)
+    write_to_file(redacted_flirt_line, "output/flirt_line.txt")

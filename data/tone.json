@@ -1,0 +1,26 @@
+{
+    "sultry": {
+        "description": "A sultry tone is characterized by a smooth, seductive, and alluring quality. It often conveys a sense of intimacy and sensuality, making it perfect for romantic or flirtatious contexts. Sultry language can be both playful and passionate, creating an atmosphere of desire and attraction.",
+        "example": "Your eyes are like a midnight sky, drawing me in with their mysterious allure."
+    },
+    "playful": {
+        "description": "A playful tone is lighthearted, fun, and often teasing. It can include humor, wit, and a sense of spontaneity. This tone is great for creating a relaxed and enjoyable atmosphere, making it ideal for casual flirting or banter.",
+        "example": "If you were a vegetable, you'd be a cute-cumber!"
+    },
+    "confident": {
+        "description": "A confident tone exudes self-assurance and assertiveness. It can be bold and direct, showing that the speaker is comfortable with themselves and their intentions. This tone can be very attractive, as it conveys a sense of security and charisma.",
+        "example": "I couldn't help but notice you from across the room, and I just had to come over and introduce myself."
+    },
+    "mysterious": {
+        "description": "A mysterious tone is enigmatic and intriguing, often leaving the listener wanting to know more. It can be subtle and suggestive, hinting at deeper layers of personality or intention without revealing everything at once. This tone can create a sense of allure and fascination.",
+        "example": "There's something about you that I can't quite put my finger on, and it's driving me crazy."
+    },
+    "romantic": {
+        "description": "A romantic tone is tender, affectionate, and often poetic. It focuses on expressing feelings of love and admiration in a heartfelt way. This tone can be ideal for deepening emotional connections and creating a sense of warmth and intimacy.",
+        "example": "Every moment with you feels like a beautiful dream I never want to wake up from."
+    },
+    "spicy": {
+        "description": "A spicy tone is bold, provocative, and often a bit daring. It can include flirtatious innuendos, playful teasing, and a sense of excitement. This tone is perfect for adding a bit of heat to the conversation and keeping things lively and engaging.",
+        "example": "I have a feeling we could have a lot of fun together... if you're up for it."
+    }
+}

@@ -1,0 +1,92 @@
+{
+  "1": {
+    "description": "innocent sweet, passable to all audiences",
+    "anchors": [
+      "light teasing",
+      "playful banter",
+      "subtle compliments"
+    ]
+  },
+
+  "2": {
+    "description": "flirty charming, mostly mischievous but still sweet",
+    "anchors": [
+      "witty innuendos",
+      "suggestive humor",
+      "playful confidence"
+    ]
+  },
+
+  "3": {
+    "description": "bold and direct, but still playful",
+    "anchors": [
+      "direct compliments",
+      "undeniable attraction",
+      "confident declarations"
+    ]
+  },
+
+  "4": {
+    "description": "edgy and provocative, with a hint of danger",
+    "anchors": [
+      "charged tension",
+      "lingering eye contact",
+      "dangerous charisma"
+    ]
+  },
+
+  "5": {
+    "description": "Middle range, with a mix of playful and provocative elements",
+    "anchors": [
+      "irresistible pull",
+      "slow-burning desire",
+      "provocative confidence"
+    ]
+  },
+
+  "6": {
+    "description": "Dominant and needful, with a hint of danger",
+    "anchors": [
+      "playful power dynamics",
+      "assertive tone",
+      "claiming attention"
+    ]
+  },
+
+  "7": {
+    "description": "Darkly alluring and dangerously magnetic",
+    "anchors": [
+      "intense emotional hunger",
+      "demanding presence",
+      "dangerous attraction"
+    ]
+  },
+
+  "8": {
+    "description": "Unappologetically seductive and flirtatious",
+    "anchors": [
+      "magnetic dominance",
+      "unapologetic desire",
+      "overwhelming chemistry"
+    ]
+  },
+
+  "9": {
+    "description": "Innuendo-laden and metaphor driven",
+    "anchors": [
+      "untamed confidence",
+      "electric tension",
+      "consuming focus"
+    ]
+  },
+
+  "10": {
+    "description": "Borderline explicit and dangerously alluring",
+    "anchors": [
+      "intensity at its peak",
+      "no restraint in tone",
+      "absolute command of the moment",
+      "bordering on explicit, but still leaving something to the imagination"
+    ]
+  }
+}

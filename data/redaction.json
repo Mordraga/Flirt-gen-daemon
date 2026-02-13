@@ -1,5 +1,6 @@
 {
-  "styles": {
+  "redaction": {
+    "styles": {
     "corporate": [
       "[REDACTED]",
       "[CLASSIFIED]",
@@ -13,7 +14,9 @@
       "[Withheld by Set]",
       "[Censored by Lilith]",
       "[Veiled by Hekate]",
-      "[Forbidden by Freya]"
+      "[Forbidden by Freya]",
+      "[Protected by Bastet]",
+      "[Concealed by Anubis]"
     ],
     "occult": [
       "[SEALED]",
@@ -45,6 +48,45 @@
       "[SHUB-NIGGURATH - Black Goat Conceals]"
     ]
   },
+  "ignored_words": [
+  "about",
+  "above",
+  "after",
+  "again",
+  "against",
+  "almost",
+  "always",
+  "among",
+  "around",
+  "before",
+  "behind",
+  "below",
+  "between",
+  "beyond",
+  "could",
+  "every",
+  "however",
+  "inside",
+  "maybe",
+  "might",
+  "other",
+  "rather",
+  "since",
+  "there",
+  "their",
+  "though",
+  "through",
+  "under",
+  "until",
+  "while",
+  "where",
+  "which",
+  "would",
+  "first",
+  "second",
+  "third"
+  ],
   "threshold": 7,
-  "max_replacements": 2
+  "max_replacements": 1
+  }
 }

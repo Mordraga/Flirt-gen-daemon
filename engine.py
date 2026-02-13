@@ -1,131 +1,70 @@
 import json
+from click import prompt
 import requests
 import os
 from pathlib import Path
 import random
-
-SPICE_FILE = Path("spice.json")
-THEME_FILE = Path("themes.json")
-CONFIG_FILE = Path("configs/config.json")
-KEYS_FILE = Path("configs/keys.json")
-REDACTION_FILE = Path("redaction.json")
-
+import re
+from helpers import (
+    load_json,
+    load_config,
+    load_keys,
+    apply_redaction,
+    log_event
+)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# =============================
-# Loaders
-# =============================
 
-def load_spice_levels():
-    with open(SPICE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def load_themes():
-    with open(THEME_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def clamp_level(level: int) -> int:
-    return max(1, min(level, 10))
-
-
-def load_config():
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def load_keys():
-    with open(KEYS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-    
-def load_redaction():
-    with open(REDACTION_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-    
-# =============================
-# Random Theme Selection
-# =============================
-
-
-
-def is_vague_input(theme: str, style: str, level: int, theme_data: dict) -> bool:
-    theme_key = theme.strip().lower()
-
-    # If theme not in available themes
-    if theme_key not in theme_data:
-        return True
-
-    # If user left defaults
-    if theme_key == "general" and style == "clever" and level == 3:
-        return True
-
-    return False
-
-
-def pick_random_theme(theme_data: dict, spice_data: dict):
-    # Filter themes that allow low spice (<=5)
-    low_spice_themes = []
-
-    for theme, data in theme_data.items():
-        if "spice_range" in data:
-            if data["spice_range"][0] <= 5:
-                low_spice_themes.append((theme, data))
-
-    if not low_spice_themes:
-        theme = random.choice(list(theme_data.keys()))
-        return theme, "clever", 3
-
-    theme, data = random.choice(low_spice_themes)
-
-    min_spice, max_spice = data["spice_range"]
-    level = random.randint(min_spice, min(5, max_spice))
-
-    return theme, "clever", level
-
-
-def build_specific_prompt(theme, style, level, spice_data, theme_data):
-    return build_prompt(theme, style, level, spice_data, theme_data)
-
-
+def build_specific_prompt(theme, tone, level):
+    return build_prompt(theme, tone, level)
 
 # =============================
 # Prompt Builder
 # =============================
+theme_data = load_json("data/themes.json")
+tone_data = load_json("data/tone.json")
+spice_data = load_json("data/spice.json")
 
-def build_prompt(theme: str, style: str, level: int, spice_data: dict, theme_data: dict) -> str:
-    lvl = str(clamp_level(level))
-    spice_desc = spice_data.get(lvl, "playful and flirty energy")
+def build_prompt(theme: str, tone: str, level: int) -> str:
+    # Extract relevant data
+    theme_obj = theme_data.get(theme, {})
+    tone_obj = tone_data.get(tone, {})
+    spice_obj = spice_data.get(str(level), {})
 
-    theme_key = theme.strip().lower()
-    theme_entry = theme_data.get(theme_key, {})
-    anchors = theme_entry.get("anchors", [])
+# Extract Description and Anchors
+    theme_desc = theme_obj.get("description") or "No description available."
+    theme_anchors = theme_obj.get("anchors", [])
 
+    tone_desc = tone_obj.get("description") or "No description available."
+    tone_anchors = tone_obj.get("anchors", [])
 
-    # Build context block if anchors exist
-    context_block = ""
-    if anchors:
-        context_block = f"\n\nContext for {theme_key} theme:\n{', '.join(anchors[:5])}"  # Limit to 5 for brevity
-
+    spice_desc = spice_obj.get("description") or "No description available."
+    spice_anchors = spice_obj.get("anchors", [])
+    
     return f"""
-You are MaidensAcquisistions.AI, or MA.AI, or Mai.
-You generate sharp, punchy flirt lines for Twitch chat.
+You are MaidensAcquisistions.AI, or Mai for short.
+You generate sharp, punchy flirt lines for a Twitch chat.
 
 Rules:
 - Maximum 15-20 words total
 - One complete sentence only (no em-dashes, no multiple clauses)
 - Capture the vibe and atmosphere of the theme naturally
-- No asterisks, no italics, no formatting marks
+- Natural Language Only
+- Ensure proper grammar and spelling
 - Twitch-safe language only
 - Deliver the punchline fast
 
-Style: {style}
-Theme: {theme_key}
-Energy: {spice_desc}{context_block}
+Theme:{theme} - {theme_desc}
+Tone:{tone} - {tone_desc}
+Spice Level:{level} - {spice_desc}
+
+Use the following anchors as inspiration, but do not force them in. Be creative and natural.
+Theme Anchors: {', '.join(theme_anchors)}
+Tone Anchors: {', '.join(tone_anchors)}
+Spice Anchors: {', '.join(spice_anchors)}
 
 Output the flirt line only. No preamble, no explanation.
 """.strip()
-
 
 # =============================
 # OpenRouter Backend
@@ -167,36 +106,9 @@ def ask_openrouter(prompt: str) -> str:
         return data["choices"][0]["message"]["content"].strip()
 
     except requests.RequestException as e:
+        log_event("openrouter_error", {"error": str(e)}, "logs/errors/error_log.json")
         return f"WARNING: OpenRouter error: {e}"
 
-import re
-
-def apply_redaction(text: str, level: int, redaction_data: dict, style: str = "divine") -> str:
-    threshold = redaction_data.get("threshold", 7)
-    max_replacements = redaction_data.get("max_replacements", 1)
-
-    if level < threshold:
-        return text
-
-    styles = redaction_data.get("styles", {})
-    style_pool = styles.get(style, ["[REDACTED]"])
-
-    if not style_pool:
-        return text
-
-    replacement_token = random.choice(style_pool)
-
-    # Target longer words only (avoid breaking short syntax words)
-    candidates = re.findall(r"\b\w{5,}\b", text)
-    if not candidates:
-        return text
-
-    targets = random.sample(candidates, min(max_replacements, len(candidates)))
-
-    for word in targets:
-        text = re.sub(rf"\b{re.escape(word)}\b", replacement_token, text, count=1)
-
-    return text
 # =============================
 # Unified Entry Point
 # =============================
