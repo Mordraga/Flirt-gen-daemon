@@ -1,0 +1,6 @@
+{
+  "openrouter_api_key": "sk-or-v1-REPLACE_ME",
+  "twitter_bearer_token": "REPLACE_ME",
+  "twitch_oauth_token": "oauth:REPLACE_ME",
+  "twitch_bot_username": "REPLACE_ME"
+}
