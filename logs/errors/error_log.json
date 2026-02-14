@@ -1,0 +1,2 @@
+{"username": "spicy", "theme": "general", "tone": "playful", "level": 3, "error": "Expecting ',' delimiter: line 11 column 3 (char 204)", "fallback_used": "OpenRouter is being shy, but Mai thinks you're adorable anyway! 🌙", "event": "generation_error", "timestamp": 1771070548}
+{"username": "TestUser", "theme": "pagan", "tone": "spicy", "level": 5, "error": "'model'", "fallback_used": "Technical difficulties, but the real magic is you being here! 💜", "event": "generation_error", "timestamp": 1771070734}

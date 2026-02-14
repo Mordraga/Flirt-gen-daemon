@@ -67,11 +67,17 @@ def ask_openrouter(prompt: str) -> str:
     config = load_config()
     keys = load_keys()
 
-    api_key = keys["openrouter_api_key"]
-    model = config["model"]
-    max_tokens = config["max_tokens"]
-    temperature = config["temperature_normal"]
-    timeout = config["timeout"]
+    # Read from Mai-config section (with fallbacks)
+    mai_config = config.get("Mai-config", config)  # If no Mai-config, use root config
+    
+    api_key = keys.get("openrouter_api_key")
+    if not api_key:
+        return "WARNING: Missing OpenRouter API key in configs/keys.json"
+    
+    model = mai_config.get("model", "mistralai/mistral-7b-instruct")
+    max_tokens = mai_config.get("max_tokens", 60)
+    temperature = mai_config.get("temperature_normal", 0.85)
+    timeout = mai_config.get("timeout", 30)
 
     headers = {
         "Authorization": f"Bearer {api_key}",

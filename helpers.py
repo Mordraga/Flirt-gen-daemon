@@ -176,19 +176,26 @@ def log_event(event_type: str, payload: Mapping[str, Any], file_path: str | Path
 # Parse Streamer.bot
 # ============================
 
-def parse_streamer_bot_command(command_str: str):
+def parse_all_params(command_str: str) -> dict:
+    """Parse theme, tone, and spice from command string"""
     themes = load_json("data/themes.json", default={})
     tones = load_json("data/tone.json", default={})
     spice_levels = load_json("data/spice.json", default={})
-
-    args = command_str.split()
-    for token in args:
+    
+    result = {
+        "theme": None,
+        "tone": None,
+        "spice": None
+    }
+    
+    for token in command_str.split():
         cleaned = token.strip().lower()
-        if cleaned in themes:
-            return "theme", cleaned
-        if cleaned in tones:
-            return "tone", cleaned
-        if cleaned in spice_levels and cleaned.isdigit():
-            return "spice", int(cleaned)
-
-    return None, None
+        
+        if cleaned in themes and result["theme"] is None:
+            result["theme"] = cleaned
+        elif cleaned in tones and result["tone"] is None:
+            result["tone"] = cleaned
+        elif cleaned.isdigit() and cleaned in spice_levels and result["spice"] is None:
+            result["spice"] = int(cleaned)
+    
+    return result

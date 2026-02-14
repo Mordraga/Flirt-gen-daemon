@@ -1,0 +1,5 @@
+{"username": "spicy", "remaining_seconds": 204, "cooldown_duration": 300, "event": "user_cooldown", "timestamp": 1771070643}
+{"username": "spicy", "remaining_seconds": 124, "cooldown_duration": 300, "event": "user_cooldown", "timestamp": 1771070723}
+{"username": "TestUser", "remaining_seconds": 76, "cooldown_duration": 300, "event": "user_cooldown", "timestamp": 1771070958}
+{"username": "TestUser", "remaining_seconds": 72, "cooldown_duration": 300, "event": "user_cooldown", "timestamp": 1771070962}
+{"username": "TestUser", "remaining_seconds": 36, "cooldown_duration": 300, "event": "user_cooldown", "timestamp": 1771070998}
