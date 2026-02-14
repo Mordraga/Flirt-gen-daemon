@@ -1,15 +1,8 @@
-import json
-from click import prompt
 import requests
-import os
-from pathlib import Path
-import random
-import re
 from helpers import (
     load_json,
     load_config,
     load_keys,
-    apply_redaction,
     log_event
 )
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"

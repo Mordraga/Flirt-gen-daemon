@@ -394,3 +394,32 @@
     "timestamp": 1770982684
 }
 
+{"args": ["flirt_daemon.py", "chocolate", "spicy", "10"], "event": "flirt_daemon_started", "timestamp": 1771006865}
+{"keys_file": "configs/keys.json", "at_utc": "2026-02-13T18:38:20.784383Z", "twitter": true, "twitch": true, "event": "oauth_init_started", "timestamp": 1771007900}
+{"keys_file": "configs/keys.json", "at_utc": "2026-02-13T18:56:07.453639Z", "twitter": true, "twitch": false, "event": "oauth_init_started", "timestamp": 1771008967}
+{"keys_file": "configs/keys.json", "error": "403 Client Error: Forbidden for url: https://api.twitter.com/oauth2/token", "event": "oauth_init_failed", "timestamp": 1771009005}
+{"keys_file": "configs/keys.json", "at_utc": "2026-02-13T18:56:55.870489Z", "twitter": true, "twitch": false, "event": "oauth_init_started", "timestamp": 1771009015}
+{"keys_file": "configs/keys.json", "error": "403 Client Error: Forbidden for url: https://api.twitter.com/oauth2/token", "event": "oauth_init_failed", "timestamp": 1771009031}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771009304}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 1, "output_path": "logs\\ingest\\twitter_2021431338784702741.jsonl", "event": "ingest_completed", "timestamp": 1771009305}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771009719}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 1, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771009720}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771009847}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771009848}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771009901}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771009903}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771010033}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771010035}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771010055}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771010057}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771010074}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771010076}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771010365}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771010367}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "event": "ingest_started", "timestamp": 1771010386}
+{"source": "twitter-thread", "conversation_id": "2021431338784702741", "count": 2, "output_path": "logs\\ingest\\twitter_2021431338784702741.json", "event": "ingest_completed", "timestamp": 1771010387}
+{"args": ["flirt_daemon.py", "cat", "spicy", "5"], "event": "flirt_daemon_started", "timestamp": 1771010495}
+{"args": ["flirt_daemon.py", "cat", "spicy", "5"], "event": "flirt_daemon_started", "timestamp": 1771010510}
+{"args": ["flirt_daemon.py", "cat", "spicy", "5"], "event": "flirt_daemon_started", "timestamp": 1771010555}
+{"source": "twitter-thread", "conversation_id": "2022372314239701039", "event": "ingest_started", "timestamp": 1771010611}
+{"source": "twitter-thread", "conversation_id": "2022372314239701039", "count": 2, "output_path": "logs\\ingest\\twitter_2022372314239701039.json", "event": "ingest_completed", "timestamp": 1771010612}

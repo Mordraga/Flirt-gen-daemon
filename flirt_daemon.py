@@ -5,6 +5,11 @@ from helpers import load_json, apply_redaction, log_event, write_to_file
 from engine import build_specific_prompt, ask_openrouter
 
 if __name__ == "__main__":
+    # Avoid Windows cp1252 crashes when model output contains characters outside code page.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     log_event("flirt_daemon_started", {"args": sys.argv}, "logs/calls/calls.json")
 

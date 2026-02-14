@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "source": "twitter-thread",
+    "conversation_id": "2021431338784702741",
+    "since_id": null,
+    "pages_requested": 1,
+    "max_results_per_page": 100,
+    "tweet_count": 2,
+    "reply_count": 1,
+    "captured_at_utc": "2026-02-13T19:19:47.624783Z"
+  },
+  "Main": {
+    "platform": "twitter",
+    "scope": "conversation_id:2021431338784702741",
+    "message_id": "2021431338784702741",
+    "username": "Mordraga",
+    "user_id": "1480351800825839620",
+    "sent_at_utc": "2026-02-11T03:49:22.000Z",
+    "captured_at_utc": "2026-02-13T19:19:47.623141Z",
+    "text": "Fuck it. Time to hard wire my pick up line engine into streamer bot as a redeem.\n\nDrop your best pick up lines for Valentine's day~\n\nY'all are NOT prepared for this.",
+    "raw": {
+      "edit_history_tweet_ids": [
+        "2021431338784702741"
+      ]
+    },
+    "replies": [
+      {
+        "platform": "twitter",
+        "scope": "conversation_id:2021431338784702741",
+        "message_id": "2021433865949323281",
+        "username": "Mordraga",
+        "user_id": "1480351800825839620",
+        "sent_at_utc": "2026-02-11T03:59:24.000Z",
+        "captured_at_utc": "2026-02-13T19:19:46.948365Z",
+        "text": "Technical note:\nI built a tiny flirty AI on my PC whose only job is to generate unhinged pick-up lines.\nIt does not know peace. It only knows flirting.\n\nYes it’s local. Yes I built it. No it has no moral compass.",
+        "raw": {
+          "edit_history_tweet_ids": [
+            "2021433865949323281"
+          ]
+        }
+      }
+    ]
+  }
+}

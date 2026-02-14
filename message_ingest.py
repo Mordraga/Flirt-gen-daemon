@@ -5,10 +5,12 @@ import time
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import requests
 
 from helpers import (
+    atomic_write_json,
     append_jsonl_many,
     get_secret,
     load_json,
@@ -19,6 +21,8 @@ from helpers import (
 
 
 TWITTER_SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"
+TWITTER_TWEET_LOOKUP_URL = "https://api.twitter.com/2/tweets/{tweet_id}"
+TWITTER_DUPLICATE_RAW_FIELDS = {"id", "author_id", "created_at", "text", "conversation_id"}
 
 
 @dataclass
@@ -31,6 +35,12 @@ class IngestedMessage:
     sent_at_utc: str
     captured_at_utc: str
     text: str
+    raw: dict[str, Any] | None = None
+
+
+def extract_twitter_raw_extras(tweet: dict[str, Any]) -> dict[str, Any] | None:
+    extras = {key: value for key, value in tweet.items() if key not in TWITTER_DUPLICATE_RAW_FIELDS}
+    return extras or None
 
 def normalize_twitch_oauth_token(token: str) -> str:
     if not token:
@@ -91,6 +101,7 @@ def fetch_twitter_thread_messages(
                     sent_at_utc=tweet.get("created_at", utc_now_iso()),
                     captured_at_utc=utc_now_iso(),
                     text=tweet.get("text", "").strip(),
+                    raw=extract_twitter_raw_extras(tweet),
                 )
             )
 
@@ -100,6 +111,64 @@ def fetch_twitter_thread_messages(
 
     messages.sort(key=lambda m: m.sent_at_utc)
     return messages
+
+
+def fetch_twitter_tweet_by_id(
+    tweet_id: str,
+    bearer_token: str,
+    timeout: int,
+) -> IngestedMessage | None:
+    headers = {"Authorization": f"Bearer {bearer_token}"}
+    params = {
+        "tweet.fields": "id,author_id,created_at,text,conversation_id",
+        "expansions": "author_id",
+        "user.fields": "id,username",
+    }
+
+    url = TWITTER_TWEET_LOOKUP_URL.format(tweet_id=tweet_id)
+    resp = requests.get(url, headers=headers, params=params, timeout=timeout)
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+
+    payload = resp.json()
+    tweet = payload.get("data")
+    if not tweet:
+        return None
+
+    users = payload.get("includes", {}).get("users", [])
+    users_by_id = {str(user.get("id")): user for user in users}
+    author_id = str(tweet.get("author_id", ""))
+    username = users_by_id.get(author_id, {}).get("username") or author_id or "unknown"
+
+    conversation_id = str(tweet.get("conversation_id", tweet_id))
+    return IngestedMessage(
+        platform="twitter",
+        scope=f"conversation_id:{conversation_id}",
+        message_id=str(tweet.get("id", "")),
+        username=username,
+        user_id=author_id or None,
+        sent_at_utc=tweet.get("created_at", utc_now_iso()),
+        captured_at_utc=utc_now_iso(),
+        text=tweet.get("text", "").strip(),
+        raw=extract_twitter_raw_extras(tweet),
+    )
+
+
+def ensure_root_tweet_present(
+    messages: list[IngestedMessage],
+    root_tweet: IngestedMessage | None,
+) -> list[IngestedMessage]:
+    if root_tweet is None:
+        return messages
+
+    existing_ids = {message.message_id for message in messages}
+    if root_tweet.message_id in existing_ids:
+        return messages
+
+    merged = [*messages, root_tweet]
+    merged.sort(key=lambda m: m.sent_at_utc)
+    return merged
 
 
 TWITCH_PRIVMSG_RE = re.compile(
@@ -218,6 +287,49 @@ def build_output_path(platform: str, scope_id: str) -> Path:
     return Path("logs") / "ingest" / f"{platform}_{safe_scope}.jsonl"
 
 
+def build_output_path_with_ext(platform: str, scope_id: str, ext: str) -> Path:
+    safe_scope = sanitize_path_component(scope_id)
+    safe_ext = ext.lstrip(".")
+    return Path("logs") / "ingest" / f"{platform}_{safe_scope}.{safe_ext}"
+
+
+def build_twitter_audit_payload(
+    conversation_id: str,
+    messages: list[IngestedMessage],
+    since_id: str | None,
+    pages: int,
+    max_results: int,
+) -> dict[str, Any]:
+    ordered_messages = sorted(messages, key=lambda message: message.sent_at_utc)
+    main_message = next(
+        (message for message in ordered_messages if message.message_id == conversation_id),
+        ordered_messages[0] if ordered_messages else None,
+    )
+    reply_messages = (
+        [message for message in ordered_messages if main_message and message.message_id != main_message.message_id]
+        if main_message
+        else []
+    )
+
+    main_payload = asdict(main_message) if main_message else None
+    if main_payload is not None:
+        main_payload["replies"] = [asdict(message) for message in reply_messages] if reply_messages else None
+
+    return {
+        "meta": {
+            "source": "twitter-thread",
+            "conversation_id": conversation_id,
+            "since_id": since_id,
+            "pages_requested": pages,
+            "max_results_per_page": max_results,
+            "tweet_count": len(messages),
+            "reply_count": len(reply_messages),
+            "captured_at_utc": utc_now_iso(),
+        },
+        "Main": main_payload,
+    }
+
+
 def run_twitter_thread(args: argparse.Namespace, keys: dict) -> int:
     bearer_token = get_secret(keys, "TWITTER_BEARER_TOKEN", "twitter_bearer_token")
     if not bearer_token:
@@ -243,8 +355,25 @@ def run_twitter_thread(args: argparse.Namespace, keys: dict) -> int:
         since_id=args.since_id,
         timeout=args.timeout,
     )
-    output_path = Path(args.out) if args.out else build_output_path("twitter", args.conversation_id)
-    append_jsonl_many(output_path, [asdict(message) for message in messages], ensure_ascii=False)
+    root_tweet = fetch_twitter_tweet_by_id(
+        tweet_id=args.conversation_id,
+        bearer_token=bearer_token,
+        timeout=args.timeout,
+    )
+    messages = ensure_root_tweet_present(messages, root_tweet)
+    output_path = (
+        Path(args.out)
+        if args.out
+        else build_output_path_with_ext("twitter", args.conversation_id, "json")
+    )
+    payload = build_twitter_audit_payload(
+        conversation_id=args.conversation_id,
+        messages=messages,
+        since_id=args.since_id,
+        pages=args.pages,
+        max_results=args.max_results,
+    )
+    atomic_write_json(output_path, payload, ensure_ascii=False, indent=2)
     log_event(
         "ingest_completed",
         {

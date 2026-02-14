@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "source": "twitter-thread",
+    "conversation_id": "2022372314239701039",
+    "since_id": null,
+    "pages_requested": 1,
+    "max_results_per_page": 100,
+    "tweet_count": 2,
+    "reply_count": 1,
+    "captured_at_utc": "2026-02-13T19:23:32.827230Z"
+  },
+  "Main": {
+    "platform": "twitter",
+    "scope": "conversation_id:2022372314239701039",
+    "message_id": "2022372314239701039",
+    "username": "Mordraga",
+    "user_id": "1480351800825839620",
+    "sent_at_utc": "2026-02-13T18:08:28.000Z",
+    "captured_at_utc": "2026-02-13T19:23:32.825553Z",
+    "text": "Running a small experiment today.\nDrop a prompt for Mai below~\n\nFormat can be simple: ‘cat, spicy, 5’ or just chaos.\nSummon wisely. 😘",
+    "raw": {
+      "edit_history_tweet_ids": [
+        "2022372314239701039"
+      ]
+    },
+    "replies": [
+      {
+        "platform": "twitter",
+        "scope": "conversation_id:2022372314239701039",
+        "message_id": "2022391061612798023",
+        "username": "Mordraga",
+        "user_id": "1480351800825839620",
+        "sent_at_utc": "2026-02-13T19:22:57.000Z",
+        "captured_at_utc": "2026-02-13T19:23:32.022875Z",
+        "text": "Example btw for cat, spicy, 5:\n\nMai: \"You’ve got more *purr*-surance in that chat than my cat has in a sunbeam. 😼\"",
+        "raw": {
+          "edit_history_tweet_ids": [
+            "2022391061612798023"
+          ]
+        }
+      }
+    ]
+  }
+}

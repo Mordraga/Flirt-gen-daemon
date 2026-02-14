@@ -1,6 +1,12 @@
 {
   "openrouter_api_key": "sk-or-v1-REPLACE_ME",
+  "twitter_api_key": "REPLACE_ME",
+  "twitter_api_secret": "REPLACE_ME",
+  "twitter_access_token": "REPLACE_ME",
+  "twitter_access_token_secret": "REPLACE_ME",
   "twitter_bearer_token": "REPLACE_ME",
+  "twitch_client_id": "REPLACE_ME",
   "twitch_oauth_token": "oauth:REPLACE_ME",
-  "twitch_bot_username": "REPLACE_ME"
+  "twitch_bot_username": "REPLACE_ME",
+  "twitch_refresh_token": "REPLACE_ME"
 }
