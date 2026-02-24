@@ -150,6 +150,12 @@
   },
   "books": {
     "category": "intellectual",
+    "tags": [
+      "nerdy",
+      "cute",
+      "cozy",
+      "romantic"
+    ],
     "description": "Literary romance and shared stories",
     "anchors": [
       "recommending your favorite book to me",
@@ -162,6 +168,12 @@
   },
   "music": {
     "category": "romantic",
+    "tags": [
+      "casual",
+      "kinky",
+      "cute",
+      "sensual"
+    ],
     "description": "Shared playlists and musical connection",
     "anchors": [
       "sharing one earbud on a crowded train",
