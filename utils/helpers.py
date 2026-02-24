@@ -147,11 +147,13 @@ def get_secret(
 # ============================
 
 def load_config() -> dict:
-    return load_json("jsons/configs/config.json")
+    from utils.paths import Paths
+    return load_json(Paths.CONFIG)
 
 
 def load_keys() -> dict:
-    return load_json("jsons/configs/keys.json")
+    from utils.paths import Paths
+    return load_json(Paths.KEYS)
 
 
 # ============================
@@ -213,11 +215,6 @@ def log_event(event_type: str, payload: Mapping[str, Any], file_path: str | Path
     }
     write_to_log(entry, file_path)
 
-
-def save_json(path, data):
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
 
 # ============================
 # Parse Streamer.bot

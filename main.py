@@ -2,6 +2,7 @@ import sys
 import subprocess
 from pathlib import Path
 from utils.helpers import load_json, log_event
+from utils.paths import Paths
 
 if __name__ == "__main__":
     # Usage: python main.py <keyword> <params> [username]
@@ -14,9 +15,9 @@ if __name__ == "__main__":
     username = sys.argv[3] if len(sys.argv) >= 4 else "Anonymous"
     
     # Load registry
-    registry = load_json("jsons/configs/registry.json", default={})
+    registry = load_json(Paths.REGISTRY, default={})
     route = registry.get(keyword)
-    
+
     # Unknown keyword
     if not route:
         print(f"ERROR: Unknown keyword '{keyword}'")
@@ -24,28 +25,28 @@ if __name__ == "__main__":
             "keyword": keyword,
             "username": username,
             "params": params
-        }, "jsons/logs/errors/routing_errors.json")
+        }, Paths.ROUTING_ERRORS)
         sys.exit(1)
-    
+
     daemon_file = route.get("file")
-    
+
     # Missing/invalid daemon file
     if not daemon_file or not Path(daemon_file).exists():
         print(f"ERROR: Daemon file not found: {daemon_file}")
         log_event("missing_daemon_file", {
             "keyword": keyword,
             "daemon_file": daemon_file
-        }, "jsons/logs/errors/routing_errors.json")
+        }, Paths.ROUTING_ERRORS)
         sys.exit(1)
-    
+
     # Log the routing
     log_event("route_called", {
         "keyword": keyword,
         "daemon": daemon_file,
         "params": params,
         "username": username
-    }, "jsons/calls/routing_log.json")
-    
+    }, Paths.ROUTING_LOG)
+
     # Execute daemon - pass through args unchanged
     try:
         result = subprocess.run(
@@ -53,23 +54,23 @@ if __name__ == "__main__":
             cwd=Path.cwd(),
             timeout=60
         )
-        
+
         # Exit with daemon's exit code
         sys.exit(result.returncode)
-        
+
     except subprocess.TimeoutExpired:
         print(f"ERROR: Daemon timeout after 60 seconds")
         log_event("daemon_timeout", {
             "keyword": keyword,
             "daemon": daemon_file
-        }, "jsons/logs/errors/routing_errors.json")
+        }, Paths.ROUTING_ERRORS)
         sys.exit(1)
-        
+
     except Exception as e:
         print(f"ERROR: {e}")
         log_event("daemon_execution_error", {
             "keyword": keyword,
             "daemon": daemon_file,
             "error": str(e)
-        }, "jsons/logs/errors/routing_errors.json")
+        }, Paths.ROUTING_ERRORS)
         sys.exit(1)

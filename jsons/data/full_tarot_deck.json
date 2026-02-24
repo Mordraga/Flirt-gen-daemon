@@ -1,0 +1,2558 @@
+{
+  "public minor": [
+    {
+      "UCID": "p01",
+      "name": "Ace of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "New beginnings in the realm of pentacles."
+        ],
+        "llm": [
+          "Symbolizes potential and a fresh start in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "new beginnings",
+          "potential",
+          "seed"
+        ],
+        "reversed": [
+          "missed opportunity",
+          "lack of direction",
+          "delay"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p01.jpg"
+    },
+    {
+      "UCID": "p02",
+      "name": "Two of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Balance and choices in pentacles matters."
+        ],
+        "llm": [
+          "Reflects navigating dual paths or decisions in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "duality",
+          "balance",
+          "decision"
+        ],
+        "reversed": [
+          "imbalance",
+          "indecision",
+          "disconnection"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/p02.jpg"
+    },
+    {
+      "UCID": "p03",
+      "name": "Three of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Growth through collaboration or expression in pentacles."
+        ],
+        "llm": [
+          "Indicates teamwork or early success within material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "growth",
+          "expression",
+          "collaboration"
+        ],
+        "reversed": [
+          "lack of progress",
+          "conflict",
+          "isolation"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p03.jpg"
+    },
+    {
+      "UCID": "p04",
+      "name": "Four of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Stability or holding pattern in pentacles."
+        ],
+        "llm": [
+          "Suggests a need for rest or consolidation in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "stability",
+          "pause",
+          "structure"
+        ],
+        "reversed": [
+          "stagnation",
+          "restlessness",
+          "resistance"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/p04.jpg"
+    },
+    {
+      "UCID": "p05",
+      "name": "Five of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Challenges and conflict in pentacles."
+        ],
+        "llm": [
+          "Represents trials or setbacks within material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "conflict",
+          "loss",
+          "challenge"
+        ],
+        "reversed": [
+          "resolution",
+          "acceptance",
+          "healing"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "No: unlikely",
+      "image_path": "assets/cards/p05.jpg"
+    },
+    {
+      "UCID": "p06",
+      "name": "Six of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Harmony or reflection in pentacles."
+        ],
+        "llm": [
+          "Signifies return to balance or memories in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "harmony",
+          "nostalgia",
+          "assistance"
+        ],
+        "reversed": [
+          "clinging to the past",
+          "lack of support",
+          "resentment"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p06.jpg"
+    },
+    {
+      "UCID": "p07",
+      "name": "Seven of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Strategy and reevaluation in pentacles."
+        ],
+        "llm": [
+          "Calls for persistence and careful moves in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "strategy",
+          "perseverance",
+          "reflection"
+        ],
+        "reversed": [
+          "avoidance",
+          "giving up",
+          "deception"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/p07.jpg"
+    },
+    {
+      "UCID": "p08",
+      "name": "Eight of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Focused effort and movement in pentacles."
+        ],
+        "llm": [
+          "Indicates a surge or journey through material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "progress",
+          "movement",
+          "focus"
+        ],
+        "reversed": [
+          "delay",
+          "distraction",
+          "stuck"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p08.jpg"
+    },
+    {
+      "UCID": "p09",
+      "name": "Nine of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Resilience or final challenges in pentacles."
+        ],
+        "llm": [
+          "Stands for hard-earned strength or nearing completion in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "resilience",
+          "culmination",
+          "defense"
+        ],
+        "reversed": [
+          "fatigue",
+          "defeat",
+          "wounded"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/p09.jpg"
+    },
+    {
+      "UCID": "p10",
+      "name": "Ten of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Endings or heavy responsibility in pentacles."
+        ],
+        "llm": [
+          "Symbolizes the weight or end point of a journey through material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "completion",
+          "burden",
+          "responsibility"
+        ],
+        "reversed": [
+          "overload",
+          "collapse",
+          "avoidance"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/p10.jpg"
+    },
+    {
+      "UCID": "p11",
+      "name": "Page of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "A messenger or young energy in pentacles."
+        ],
+        "llm": [
+          "Brings new ideas or signals change in material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "curiosity",
+          "messages",
+          "youth"
+        ],
+        "reversed": [
+          "immaturity",
+          "miscommunication",
+          "hesitation"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p11.jpg"
+    },
+    {
+      "UCID": "p12",
+      "name": "Knight of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Movement and pursuit in pentacles."
+        ],
+        "llm": [
+          "Represents drive and force through material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "action",
+          "pursuit",
+          "momentum"
+        ],
+        "reversed": [
+          "recklessness",
+          "delay",
+          "stalling"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p12.jpg"
+    },
+    {
+      "UCID": "p13",
+      "name": "Queen of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Mastery and emotional maturity in pentacles."
+        ],
+        "llm": [
+          "Symbolizes internal strength and command of material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "wisdom",
+          "maturity",
+          "nurturing"
+        ],
+        "reversed": [
+          "coldness",
+          "dependence",
+          "emotional block"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p13.jpg"
+    },
+    {
+      "UCID": "p14",
+      "name": "King of Pentacles",
+      "arcana": "Minor",
+      "suit": "Pentacles",
+      "summary": {
+        "display": [
+          "Leadership and power in pentacles."
+        ],
+        "llm": [
+          "Embodies mastery and control over material and financial matters."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "authority",
+          "leadership",
+          "structure"
+        ],
+        "reversed": [
+          "domineering",
+          "rigid",
+          "abuse of power"
+        ]
+      },
+      "reading_tags": [
+        "career",
+        "wealth",
+        "material gain"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/p14.jpg"
+    },
+    {
+      "UCID": "s01",
+      "name": "Ace of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "New beginnings in the realm of swords."
+        ],
+        "llm": [
+          "Symbolizes potential and a fresh start in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "new beginnings",
+          "potential",
+          "seed"
+        ],
+        "reversed": [
+          "missed opportunity",
+          "lack of direction",
+          "delay"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s01.jpg"
+    },
+    {
+      "UCID": "s02",
+      "name": "Two of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Balance and choices in swords matters."
+        ],
+        "llm": [
+          "Reflects navigating dual paths or decisions in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "duality",
+          "balance",
+          "decision"
+        ],
+        "reversed": [
+          "imbalance",
+          "indecision",
+          "disconnection"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/s02.jpg"
+    },
+    {
+      "UCID": "s03",
+      "name": "Three of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Growth through collaboration or expression in swords."
+        ],
+        "llm": [
+          "Indicates teamwork or early success within conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "growth",
+          "expression",
+          "collaboration"
+        ],
+        "reversed": [
+          "lack of progress",
+          "conflict",
+          "isolation"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s03.jpg"
+    },
+    {
+      "UCID": "s04",
+      "name": "Four of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Stability or holding pattern in swords."
+        ],
+        "llm": [
+          "Suggests a need for rest or consolidation in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "stability",
+          "pause",
+          "structure"
+        ],
+        "reversed": [
+          "stagnation",
+          "restlessness",
+          "resistance"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/s04.jpg"
+    },
+    {
+      "UCID": "s05",
+      "name": "Five of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Challenges and conflict in swords."
+        ],
+        "llm": [
+          "Represents trials or setbacks within conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "conflict",
+          "loss",
+          "challenge"
+        ],
+        "reversed": [
+          "resolution",
+          "acceptance",
+          "healing"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "No: unlikely",
+      "image_path": "assets/cards/s05.jpg"
+    },
+    {
+      "UCID": "s06",
+      "name": "Six of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Harmony or reflection in swords."
+        ],
+        "llm": [
+          "Signifies return to balance or memories in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "harmony",
+          "nostalgia",
+          "assistance"
+        ],
+        "reversed": [
+          "clinging to the past",
+          "lack of support",
+          "resentment"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s06.jpg"
+    },
+    {
+      "UCID": "s07",
+      "name": "Seven of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Strategy and reevaluation in swords."
+        ],
+        "llm": [
+          "Calls for persistence and careful moves in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "strategy",
+          "perseverance",
+          "reflection"
+        ],
+        "reversed": [
+          "avoidance",
+          "giving up",
+          "deception"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/s07.jpg"
+    },
+    {
+      "UCID": "s08",
+      "name": "Eight of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Focused effort and movement in swords."
+        ],
+        "llm": [
+          "Indicates a surge or journey through conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "progress",
+          "movement",
+          "focus"
+        ],
+        "reversed": [
+          "delay",
+          "distraction",
+          "stuck"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s08.jpg"
+    },
+    {
+      "UCID": "s09",
+      "name": "Nine of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Resilience or final challenges in swords."
+        ],
+        "llm": [
+          "Stands for hard-earned strength or nearing completion in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "resilience",
+          "culmination",
+          "defense"
+        ],
+        "reversed": [
+          "fatigue",
+          "defeat",
+          "wounded"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/s09.jpg"
+    },
+    {
+      "UCID": "s10",
+      "name": "Ten of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Endings or heavy responsibility in swords."
+        ],
+        "llm": [
+          "Symbolizes the weight or end point of a journey through conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "completion",
+          "burden",
+          "responsibility"
+        ],
+        "reversed": [
+          "overload",
+          "collapse",
+          "avoidance"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/s10.jpg"
+    },
+    {
+      "UCID": "s11",
+      "name": "Page of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "A messenger or young energy in swords."
+        ],
+        "llm": [
+          "Brings new ideas or signals change in conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "curiosity",
+          "messages",
+          "youth"
+        ],
+        "reversed": [
+          "immaturity",
+          "miscommunication",
+          "hesitation"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s11.jpg"
+    },
+    {
+      "UCID": "s12",
+      "name": "Knight of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Movement and pursuit in swords."
+        ],
+        "llm": [
+          "Represents drive and force through conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "action",
+          "pursuit",
+          "momentum"
+        ],
+        "reversed": [
+          "recklessness",
+          "delay",
+          "stalling"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s12.jpg"
+    },
+    {
+      "UCID": "s13",
+      "name": "Queen of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Mastery and emotional maturity in swords."
+        ],
+        "llm": [
+          "Symbolizes internal strength and command of conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "wisdom",
+          "maturity",
+          "nurturing"
+        ],
+        "reversed": [
+          "coldness",
+          "dependence",
+          "emotional block"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s13.jpg"
+    },
+    {
+      "UCID": "s14",
+      "name": "King of Swords",
+      "arcana": "Minor",
+      "suit": "Swords",
+      "summary": {
+        "display": [
+          "Leadership and power in swords."
+        ],
+        "llm": [
+          "Embodies mastery and control over conflict, intellect, and communication."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "authority",
+          "leadership",
+          "structure"
+        ],
+        "reversed": [
+          "domineering",
+          "rigid",
+          "abuse of power"
+        ]
+      },
+      "reading_tags": [
+        "mental clarity",
+        "conflict",
+        "decisions"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/s14.jpg"
+    },
+    {
+      "UCID": "c01",
+      "name": "Ace of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "New beginnings in the realm of cups."
+        ],
+        "llm": [
+          "Symbolizes potential and a fresh start in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "new beginnings",
+          "potential",
+          "seed"
+        ],
+        "reversed": [
+          "missed opportunity",
+          "lack of direction",
+          "delay"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c01.jpg"
+    },
+    {
+      "UCID": "c02",
+      "name": "Two of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Balance and choices in cups matters."
+        ],
+        "llm": [
+          "Reflects navigating dual paths or decisions in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "duality",
+          "balance",
+          "decision"
+        ],
+        "reversed": [
+          "imbalance",
+          "indecision",
+          "disconnection"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/c02.jpg"
+    },
+    {
+      "UCID": "c03",
+      "name": "Three of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Growth through collaboration or expression in cups."
+        ],
+        "llm": [
+          "Indicates teamwork or early success within emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "growth",
+          "expression",
+          "collaboration"
+        ],
+        "reversed": [
+          "lack of progress",
+          "conflict",
+          "isolation"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c03.jpg"
+    },
+    {
+      "UCID": "c04",
+      "name": "Four of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Stability or holding pattern in cups."
+        ],
+        "llm": [
+          "Suggests a need for rest or consolidation in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "stability",
+          "pause",
+          "structure"
+        ],
+        "reversed": [
+          "stagnation",
+          "restlessness",
+          "resistance"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/c04.jpg"
+    },
+    {
+      "UCID": "c05",
+      "name": "Five of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Challenges and conflict in cups."
+        ],
+        "llm": [
+          "Represents trials or setbacks within emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "conflict",
+          "loss",
+          "challenge"
+        ],
+        "reversed": [
+          "resolution",
+          "acceptance",
+          "healing"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "No: unlikely",
+      "image_path": "assets/cards/c05.jpg"
+    },
+    {
+      "UCID": "c06",
+      "name": "Six of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Harmony or reflection in cups."
+        ],
+        "llm": [
+          "Signifies return to balance or memories in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "harmony",
+          "nostalgia",
+          "assistance"
+        ],
+        "reversed": [
+          "clinging to the past",
+          "lack of support",
+          "resentment"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c06.jpg"
+    },
+    {
+      "UCID": "c07",
+      "name": "Seven of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Strategy and reevaluation in cups."
+        ],
+        "llm": [
+          "Calls for persistence and careful moves in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "strategy",
+          "perseverance",
+          "reflection"
+        ],
+        "reversed": [
+          "avoidance",
+          "giving up",
+          "deception"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/c07.jpg"
+    },
+    {
+      "UCID": "c08",
+      "name": "Eight of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Focused effort and movement in cups."
+        ],
+        "llm": [
+          "Indicates a surge or journey through emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "progress",
+          "movement",
+          "focus"
+        ],
+        "reversed": [
+          "delay",
+          "distraction",
+          "stuck"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c08.jpg"
+    },
+    {
+      "UCID": "c09",
+      "name": "Nine of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Resilience or final challenges in cups."
+        ],
+        "llm": [
+          "Stands for hard-earned strength or nearing completion in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "resilience",
+          "culmination",
+          "defense"
+        ],
+        "reversed": [
+          "fatigue",
+          "defeat",
+          "wounded"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/c09.jpg"
+    },
+    {
+      "UCID": "c10",
+      "name": "Ten of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Endings or heavy responsibility in cups."
+        ],
+        "llm": [
+          "Symbolizes the weight or end point of a journey through emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "completion",
+          "burden",
+          "responsibility"
+        ],
+        "reversed": [
+          "overload",
+          "collapse",
+          "avoidance"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/c10.jpg"
+    },
+    {
+      "UCID": "c11",
+      "name": "Page of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "A messenger or young energy in cups."
+        ],
+        "llm": [
+          "Brings new ideas or signals change in emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "curiosity",
+          "messages",
+          "youth"
+        ],
+        "reversed": [
+          "immaturity",
+          "miscommunication",
+          "hesitation"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c11.jpg"
+    },
+    {
+      "UCID": "c12",
+      "name": "Knight of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Movement and pursuit in cups."
+        ],
+        "llm": [
+          "Represents drive and force through emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "action",
+          "pursuit",
+          "momentum"
+        ],
+        "reversed": [
+          "recklessness",
+          "delay",
+          "stalling"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c12.jpg"
+    },
+    {
+      "UCID": "c13",
+      "name": "Queen of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Mastery and emotional maturity in cups."
+        ],
+        "llm": [
+          "Symbolizes internal strength and command of emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "wisdom",
+          "maturity",
+          "nurturing"
+        ],
+        "reversed": [
+          "coldness",
+          "dependence",
+          "emotional block"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c13.jpg"
+    },
+    {
+      "UCID": "c14",
+      "name": "King of Cups",
+      "arcana": "Minor",
+      "suit": "Cups",
+      "summary": {
+        "display": [
+          "Leadership and power in cups."
+        ],
+        "llm": [
+          "Embodies mastery and control over emotions, relationships, and intuition."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "authority",
+          "leadership",
+          "structure"
+        ],
+        "reversed": [
+          "domineering",
+          "rigid",
+          "abuse of power"
+        ]
+      },
+      "reading_tags": [
+        "love",
+        "emotion",
+        "intuition"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/c14.jpg"
+    },
+    {
+      "UCID": "w01",
+      "name": "Ace of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "New beginnings in the realm of wands."
+        ],
+        "llm": [
+          "Symbolizes potential and a fresh start in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "new beginnings",
+          "potential",
+          "seed"
+        ],
+        "reversed": [
+          "missed opportunity",
+          "lack of direction",
+          "delay"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w01.jpg"
+    },
+    {
+      "UCID": "w02",
+      "name": "Two of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Balance and choices in wands matters."
+        ],
+        "llm": [
+          "Reflects navigating dual paths or decisions in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "duality",
+          "balance",
+          "decision"
+        ],
+        "reversed": [
+          "imbalance",
+          "indecision",
+          "disconnection"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/w02.jpg"
+    },
+    {
+      "UCID": "w03",
+      "name": "Three of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Growth through collaboration or expression in wands."
+        ],
+        "llm": [
+          "Indicates teamwork or early success within creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "growth",
+          "expression",
+          "collaboration"
+        ],
+        "reversed": [
+          "lack of progress",
+          "conflict",
+          "isolation"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w03.jpg"
+    },
+    {
+      "UCID": "w04",
+      "name": "Four of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Stability or holding pattern in wands."
+        ],
+        "llm": [
+          "Suggests a need for rest or consolidation in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "stability",
+          "pause",
+          "structure"
+        ],
+        "reversed": [
+          "stagnation",
+          "restlessness",
+          "resistance"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/w04.jpg"
+    },
+    {
+      "UCID": "w05",
+      "name": "Five of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Challenges and conflict in wands."
+        ],
+        "llm": [
+          "Represents trials or setbacks within creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "conflict",
+          "loss",
+          "challenge"
+        ],
+        "reversed": [
+          "resolution",
+          "acceptance",
+          "healing"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "No: unlikely",
+      "image_path": "assets/cards/w05.jpg"
+    },
+    {
+      "UCID": "w06",
+      "name": "Six of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Harmony or reflection in wands."
+        ],
+        "llm": [
+          "Signifies return to balance or memories in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "harmony",
+          "nostalgia",
+          "assistance"
+        ],
+        "reversed": [
+          "clinging to the past",
+          "lack of support",
+          "resentment"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w06.jpg"
+    },
+    {
+      "UCID": "w07",
+      "name": "Seven of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Strategy and reevaluation in wands."
+        ],
+        "llm": [
+          "Calls for persistence and careful moves in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "strategy",
+          "perseverance",
+          "reflection"
+        ],
+        "reversed": [
+          "avoidance",
+          "giving up",
+          "deception"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/w07.jpg"
+    },
+    {
+      "UCID": "w08",
+      "name": "Eight of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Focused effort and movement in wands."
+        ],
+        "llm": [
+          "Indicates a surge or journey through creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "progress",
+          "movement",
+          "focus"
+        ],
+        "reversed": [
+          "delay",
+          "distraction",
+          "stuck"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w08.jpg"
+    },
+    {
+      "UCID": "w09",
+      "name": "Nine of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Resilience or final challenges in wands."
+        ],
+        "llm": [
+          "Stands for hard-earned strength or nearing completion in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "resilience",
+          "culmination",
+          "defense"
+        ],
+        "reversed": [
+          "fatigue",
+          "defeat",
+          "wounded"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/w09.jpg"
+    },
+    {
+      "UCID": "w10",
+      "name": "Ten of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Endings or heavy responsibility in wands."
+        ],
+        "llm": [
+          "Symbolizes the weight or end point of a journey through creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "completion",
+          "burden",
+          "responsibility"
+        ],
+        "reversed": [
+          "overload",
+          "collapse",
+          "avoidance"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Maybe: uncertain",
+      "image_path": "assets/cards/w10.jpg"
+    },
+    {
+      "UCID": "w11",
+      "name": "Page of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "A messenger or young energy in wands."
+        ],
+        "llm": [
+          "Brings new ideas or signals change in creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "curiosity",
+          "messages",
+          "youth"
+        ],
+        "reversed": [
+          "immaturity",
+          "miscommunication",
+          "hesitation"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w11.jpg"
+    },
+    {
+      "UCID": "w12",
+      "name": "Knight of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Movement and pursuit in wands."
+        ],
+        "llm": [
+          "Represents drive and force through creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "action",
+          "pursuit",
+          "momentum"
+        ],
+        "reversed": [
+          "recklessness",
+          "delay",
+          "stalling"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w12.jpg"
+    },
+    {
+      "UCID": "w13",
+      "name": "Queen of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Mastery and emotional maturity in wands."
+        ],
+        "llm": [
+          "Symbolizes internal strength and command of creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "wisdom",
+          "maturity",
+          "nurturing"
+        ],
+        "reversed": [
+          "coldness",
+          "dependence",
+          "emotional block"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w13.jpg"
+    },
+    {
+      "UCID": "w14",
+      "name": "King of Wands",
+      "arcana": "Minor",
+      "suit": "Wands",
+      "summary": {
+        "display": [
+          "Leadership and power in wands."
+        ],
+        "llm": [
+          "Embodies mastery and control over creativity, passion, and action."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "authority",
+          "leadership",
+          "structure"
+        ],
+        "reversed": [
+          "domineering",
+          "rigid",
+          "abuse of power"
+        ]
+      },
+      "reading_tags": [
+        "creativity",
+        "ambition",
+        "movement"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/w14.jpg"
+    }
+  ],
+  "public major": [
+    {
+      "UCID": "m00",
+      "name": "The Fool",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Beginnings, spontaneity, and potential."
+        ],
+        "llm": [
+          "Symbolizes the start of a journey with innocence and curiosity."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "new beginnings",
+          "faith",
+          "innocence"
+        ],
+        "reversed": [
+          "recklessness",
+          "naivety",
+          "hesitation"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Yes: likely",
+      "image_path": "assets/cards/m00.jpg"
+    },
+    {
+      "UCID": "m01",
+      "name": "The Magician",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Magician'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the magician in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m01.jpg"
+    },
+    {
+      "UCID": "m02",
+      "name": "The High Priestess",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The High Priestess'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the high priestess in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m02.jpg"
+    },
+    {
+      "UCID": "m03",
+      "name": "The Empress",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Empress'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the empress in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m03.jpg"
+    },
+    {
+      "UCID": "m04",
+      "name": "The Emperor",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Emperor'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the emperor in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m04.jpg"
+    },
+    {
+      "UCID": "m05",
+      "name": "The Hierophant",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Hierophant'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the hierophant in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m05.jpg"
+    },
+    {
+      "UCID": "m06",
+      "name": "The Lovers",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Love, unity, and choices."
+        ],
+        "llm": [
+          "Symbolizes deep connection and the power of choice."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "love",
+          "harmony",
+          "alignment"
+        ],
+        "reversed": [
+          "conflict",
+          "imbalance",
+          "temptation"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Yes: if aligned",
+      "image_path": "assets/cards/m06.jpg"
+    },
+    {
+      "UCID": "m07",
+      "name": "The Chariot",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Chariot'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the chariot in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m07.jpg"
+    },
+    {
+      "UCID": "m08",
+      "name": "Strength",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'Strength'."
+        ],
+        "llm": [
+          "A major theme card symbolizing strength in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m08.jpg"
+    },
+    {
+      "UCID": "m09",
+      "name": "The Hermit",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Hermit'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the hermit in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m09.jpg"
+    },
+    {
+      "UCID": "m10",
+      "name": "Wheel of Fortune",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'Wheel of Fortune'."
+        ],
+        "llm": [
+          "A major theme card symbolizing wheel of fortune in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m10.jpg"
+    },
+    {
+      "UCID": "m11",
+      "name": "Justice",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'Justice'."
+        ],
+        "llm": [
+          "A major theme card symbolizing justice in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m11.jpg"
+    },
+    {
+      "UCID": "m12",
+      "name": "The Hanged Man",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Hanged Man'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the hanged man in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m12.jpg"
+    },
+    {
+      "UCID": "m13",
+      "name": "Death",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Transformation and letting go."
+        ],
+        "llm": [
+          "Represents endings that lead to rebirth or major change."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "transformation",
+          "rebirth",
+          "release"
+        ],
+        "reversed": [
+          "resistance",
+          "fear of change",
+          "stagnation"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "No: but opens a door",
+      "image_path": "assets/cards/m13.jpg"
+    },
+    {
+      "UCID": "m14",
+      "name": "Temperance",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'Temperance'."
+        ],
+        "llm": [
+          "A major theme card symbolizing temperance in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m14.jpg"
+    },
+    {
+      "UCID": "m15",
+      "name": "The Devil",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Devil'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the devil in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m15.jpg"
+    },
+    {
+      "UCID": "m16",
+      "name": "The Tower",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Sudden change and upheaval."
+        ],
+        "llm": [
+          "Represents breakdowns that lead to revelation."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "upheaval",
+          "awakening",
+          "revelation"
+        ],
+        "reversed": [
+          "disaster",
+          "resistance",
+          "chaos"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "No: abrupt shift",
+      "image_path": "assets/cards/m16.jpg"
+    },
+    {
+      "UCID": "m17",
+      "name": "The Star",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Star'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the star in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m17.jpg"
+    },
+    {
+      "UCID": "m18",
+      "name": "The Moon",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Moon'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the moon in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m18.jpg"
+    },
+    {
+      "UCID": "m19",
+      "name": "The Sun",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'The Sun'."
+        ],
+        "llm": [
+          "A major theme card symbolizing the sun in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m19.jpg"
+    },
+    {
+      "UCID": "m20",
+      "name": "Judgement",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Represents the archetype of 'Judgement'."
+        ],
+        "llm": [
+          "A major theme card symbolizing judgement in life."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "insight",
+          "theme",
+          "archetype"
+        ],
+        "reversed": [
+          "blockage",
+          "resistance",
+          "imbalance"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Maybe: depends",
+      "image_path": "assets/cards/m20.jpg"
+    },
+    {
+      "UCID": "m21",
+      "name": "The World",
+      "arcana": "Major",
+      "summary": {
+        "display": [
+          "Completion, integration, and wholeness."
+        ],
+        "llm": [
+          "Marks the end of a journey and a new beginning."
+        ]
+      },
+      "keywords": {
+        "upright": [
+          "completion",
+          "wholeness",
+          "achievement"
+        ],
+        "reversed": [
+          "incompletion",
+          "delay",
+          "lack of closure"
+        ]
+      },
+      "reading_tags": [
+        "life path",
+        "spiritual",
+        "destiny"
+      ],
+      "Y/N": "Yes: finality",
+      "image_path": "assets/cards/m21.jpg"
+    }
+  ]
+}

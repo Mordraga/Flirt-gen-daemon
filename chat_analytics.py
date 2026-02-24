@@ -19,7 +19,7 @@ def load_chat_log(log_file="jsons/logs/history/chat_log.json"):
         for line in f:
             try:
                 messages.append(json.loads(line))
-            except:
+            except json.JSONDecodeError:
                 pass
     
     return messages

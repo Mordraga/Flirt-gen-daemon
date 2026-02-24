@@ -18,6 +18,8 @@ from utils.helpers import (
     sanitize_path_component,
     utc_now_iso,
 )
+from utils.irc_utils import parse_irc_tags, PRIVMSG_RE
+from utils.paths import Paths
 
 
 TWITTER_SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"
@@ -171,22 +173,7 @@ def ensure_root_tweet_present(
     return merged
 
 
-TWITCH_PRIVMSG_RE = re.compile(
-    r"^(?:@(?P<tags>[^ ]+) )?:(?P<nick>[^!]+)![^ ]+ PRIVMSG #(?P<channel>[A-Za-z0-9_]+) :(?P<message>.*)$"
-)
-
-
-def parse_irc_tags(tag_text: str | None) -> dict:
-    if not tag_text:
-        return {}
-    tags: dict[str, str] = {}
-    for item in tag_text.split(";"):
-        if "=" in item:
-            key, value = item.split("=", 1)
-            tags[key] = value
-        else:
-            tags[item] = ""
-    return tags
+TWITCH_PRIVMSG_RE = PRIVMSG_RE
 
 
 def parse_twitch_privmsg(line: str, expected_channel: str) -> IngestedMessage | None:
@@ -337,14 +324,14 @@ def run_twitter_thread(args: argparse.Namespace, keys: dict) -> int:
         log_event(
             "ingest_failed",
             {"source": "twitter-thread", "reason": "missing_twitter_bearer_token"},
-            "jsons/calls/calls.json",
+            Paths.CALLS_LOG,
         )
         return 1
 
     log_event(
         "ingest_started",
         {"source": "twitter-thread", "conversation_id": args.conversation_id},
-        "jsons/calls/calls.json",
+        Paths.CALLS_LOG,
     )
 
     messages = fetch_twitter_thread_messages(
@@ -382,7 +369,7 @@ def run_twitter_thread(args: argparse.Namespace, keys: dict) -> int:
             "count": len(messages),
             "output_path": str(output_path),
         },
-        "jsons/calls/calls.json",
+        Paths.CALLS_LOG,
     )
     print(f"Ingested {len(messages)} twitter messages into {output_path}")
     return 0
@@ -397,7 +384,7 @@ def run_twitch_chat(args: argparse.Namespace, keys: dict) -> int:
         log_event(
             "ingest_failed",
             {"source": "twitch-chat", "reason": "missing_twitch_oauth_token"},
-            "jsons/calls/calls.json",
+            Paths.CALLS_LOG,
         )
         return 1
     if not bot_username:
@@ -405,14 +392,14 @@ def run_twitch_chat(args: argparse.Namespace, keys: dict) -> int:
         log_event(
             "ingest_failed",
             {"source": "twitch-chat", "reason": "missing_twitch_bot_username"},
-            "jsons/calls/calls.json",
+            Paths.CALLS_LOG,
         )
         return 1
 
     log_event(
         "ingest_started",
         {"source": "twitch-chat", "channel": args.channel, "duration": args.duration},
-        "jsons/calls/calls.json",
+        Paths.CALLS_LOG,
     )
 
     messages = capture_twitch_chat_messages(
@@ -434,7 +421,7 @@ def run_twitch_chat(args: argparse.Namespace, keys: dict) -> int:
             "count": len(messages),
             "output_path": str(output_path),
         },
-        "jsons/calls/calls.json",
+        Paths.CALLS_LOG,
     )
     print(f"Ingested {len(messages)} twitch messages into {output_path}")
     return 0
@@ -444,7 +431,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Scoped message ingestion MVP for Twitter threads and Twitch chat."
     )
-    parser.add_argument("--keys-file", default="jsons/configs/keys.json", help="Path to keys JSON file")
+    parser.add_argument("--keys-file", default=Paths.KEYS, help="Path to keys JSON file")
 
     subparsers = parser.add_subparsers(dest="source", required=True)
 
@@ -479,7 +466,7 @@ def main() -> int:
         log_event(
             "ingest_error",
             {"source": args.source, "error": str(exc)},
-            "jsons/calls/calls.json",
+            Paths.CALLS_LOG,
         )
         raise
 

@@ -1,5 +1,4 @@
 import random
-import re
 import socket
 import sys
 import time
@@ -10,209 +9,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from engine import ask_openrouter
 from mai_personality import (
-    WITCH_USERNAME,
     detect_context,
     generate_contextual_response,
     get_contextual_fallback,
     is_mordraga,
     mordraga_chat,
 )
-from utils.helpers import load_config, load_json, load_keys, log_event, sanitize_path_component, save_json
-
-
-DEFAULT_MONITOR_CONFIG = {
-    "irc_server": "irc.chat.twitch.tv",
-    "irc_port": 6667,
-    "response_chance_percent": 35.0,
-    "global_cooldown_seconds": 5,
-    "check_buffer_size": 2048,
-    "ignored_bot_usernames": ["nightbot", "streamelements", "streamlabs", "moobot", "fossabot"],
-    "respond_to_owner_always": True,
-    "ignore_command_messages": True,
-    "owner_username": WITCH_USERNAME,
-    "config_reload_seconds": 2.0,
-    "registry_flush_seconds": 30,
-}
-
-
-class LiveMonitorConfig:
-    """Hot-reloadable monitor configuration sourced from jsons/configs/config.json."""
-
-    def __init__(self, config_path: str = "jsons/configs/config.json"):
-        self.config_path = Path(config_path)
-        self._last_mtime = 0.0
-        self._last_check = 0.0
-        self._last_log_error_at = 0.0
-
-        # Initialize with defaults
-        self.irc_server = DEFAULT_MONITOR_CONFIG["irc_server"]
-        self.irc_port = DEFAULT_MONITOR_CONFIG["irc_port"]
-        self.response_chance_percent = DEFAULT_MONITOR_CONFIG["response_chance_percent"]
-        self.global_cooldown_seconds = DEFAULT_MONITOR_CONFIG["global_cooldown_seconds"]
-        self.check_buffer_size = DEFAULT_MONITOR_CONFIG["check_buffer_size"]
-        self.ignored_bot_usernames = set(DEFAULT_MONITOR_CONFIG["ignored_bot_usernames"])
-        self.respond_to_owner_always = DEFAULT_MONITOR_CONFIG["respond_to_owner_always"]
-        self.ignore_command_messages = DEFAULT_MONITOR_CONFIG["ignore_command_messages"]
-        self.owner_username = DEFAULT_MONITOR_CONFIG["owner_username"]
-        self.config_reload_seconds = DEFAULT_MONITOR_CONFIG["config_reload_seconds"]
-        self.registry_flush_seconds = DEFAULT_MONITOR_CONFIG["registry_flush_seconds"]
-
-        self.reload(force=True)
-
-    @staticmethod
-    def _as_float(value, default: float) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return float(default)
-
-    @staticmethod
-    def _as_int(value, default: int) -> int:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return int(default)
-
-    @staticmethod
-    def _as_bool(value, default: bool) -> bool:
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, (int, float)):
-            return bool(value)
-        if isinstance(value, str):
-            lowered = value.strip().lower()
-            if lowered in {"1", "true", "yes", "on"}:
-                return True
-            if lowered in {"0", "false", "no", "off"}:
-                return False
-        return bool(default)
-
-    def _throttled_reload_error(self, error: Exception):
-        now = time.time()
-        if now - self._last_log_error_at >= 30:
-            self._last_log_error_at = now
-            print(f"[Mai Monitor] Config reload warning: {error}")
-            log_event(
-                "monitor_config_reload_error",
-                {"error": str(error)},
-                "jsons/logs/errors/autonomous_errors.json",
-            )
-
-    def _apply(self, monitor_config: dict):
-        self.irc_server = str(monitor_config.get("irc_server", self.irc_server)).strip() or DEFAULT_MONITOR_CONFIG["irc_server"]
-
-        irc_port = self._as_int(monitor_config.get("irc_port", self.irc_port), DEFAULT_MONITOR_CONFIG["irc_port"])
-        self.irc_port = max(1, min(65535, irc_port))
-
-        response_percent = self._as_float(
-            monitor_config.get("response_chance_percent", self.response_chance_percent),
-            DEFAULT_MONITOR_CONFIG["response_chance_percent"],
-        )
-        self.response_chance_percent = max(0.0, min(100.0, response_percent))
-
-        cooldown = self._as_int(
-            monitor_config.get("global_cooldown_seconds", self.global_cooldown_seconds),
-            DEFAULT_MONITOR_CONFIG["global_cooldown_seconds"],
-        )
-        self.global_cooldown_seconds = max(0, cooldown)
-
-        buffer_size = self._as_int(
-            monitor_config.get("check_buffer_size", self.check_buffer_size),
-            DEFAULT_MONITOR_CONFIG["check_buffer_size"],
-        )
-        self.check_buffer_size = max(256, buffer_size)
-
-        ignored_raw = monitor_config.get("ignored_bot_usernames", list(self.ignored_bot_usernames))
-        if isinstance(ignored_raw, str):
-            ignored_list = [name.strip() for name in ignored_raw.split(",") if name.strip()]
-        elif isinstance(ignored_raw, list):
-            ignored_list = [str(name).strip() for name in ignored_raw if str(name).strip()]
-        else:
-            ignored_list = list(DEFAULT_MONITOR_CONFIG["ignored_bot_usernames"])
-        self.ignored_bot_usernames = {name.lower() for name in ignored_list}
-
-        self.respond_to_owner_always = self._as_bool(
-            monitor_config.get("respond_to_owner_always", self.respond_to_owner_always),
-            DEFAULT_MONITOR_CONFIG["respond_to_owner_always"],
-        )
-
-        self.ignore_command_messages = self._as_bool(
-            monitor_config.get("ignore_command_messages", self.ignore_command_messages),
-            DEFAULT_MONITOR_CONFIG["ignore_command_messages"],
-        )
-
-        owner = str(monitor_config.get("owner_username", self.owner_username)).strip().lower()
-        self.owner_username = owner or WITCH_USERNAME
-
-        reload_seconds = self._as_float(
-            monitor_config.get("config_reload_seconds", self.config_reload_seconds),
-            DEFAULT_MONITOR_CONFIG["config_reload_seconds"],
-        )
-        self.config_reload_seconds = max(0.5, reload_seconds)
-
-        flush_seconds = self._as_int(
-            monitor_config.get("registry_flush_seconds", self.registry_flush_seconds),
-            DEFAULT_MONITOR_CONFIG["registry_flush_seconds"],
-        )
-        self.registry_flush_seconds = max(5, flush_seconds)
-
-    def reload(self, force: bool = False) -> bool:
-        """Reload config if changed. Returns True if reloaded."""
-        now = time.time()
-        if not force and now - self._last_check < self.config_reload_seconds:
-            return False
-
-        self._last_check = now
-
-        try:
-            mtime = self.config_path.stat().st_mtime
-        except Exception as e:
-            self._throttled_reload_error(e)
-            return False
-
-        if not force and mtime <= self._last_mtime:
-            return False
-
-        try:
-            full_config = load_config()
-            monitor_config = full_config.get("monitor", {})
-            if not isinstance(monitor_config, dict):
-                monitor_config = {}
-
-            self._apply(monitor_config)
-            self._last_mtime = mtime
-            print(
-                f"[Mai Monitor] Config reloaded | chance={self.response_chance_percent}% "
-                f"cooldown={self.global_cooldown_seconds}s owner={self.owner_username}"
-            )
-            return True
-
-        except Exception as e:
-            self._throttled_reload_error(e)
-            return False
-
-
-class AutonomousRateLimiter:
-    """Simple global cooldown for autonomous responses."""
-
-    def __init__(self, cooldown_seconds: int = 5):
-        self.cooldown = cooldown_seconds
-        self.last_response = 0.0
-
-    def can_respond(self) -> tuple[bool, int]:
-        """Returns (can_respond, seconds_remaining)."""
-        now = time.time()
-        elapsed = now - self.last_response
-
-        if elapsed >= self.cooldown:
-            return True, 0
-
-        remaining = int(self.cooldown - elapsed)
-        return False, max(0, remaining)
-
-    def mark_responded(self):
-        """Record a successful autonomous response timestamp."""
-        self.last_response = time.time()
+from monitor import AutonomousRateLimiter, LiveMonitorConfig
+from utils.helpers import atomic_write_json, load_config, load_json, load_keys, log_event, sanitize_path_component
+from utils.irc_utils import parse_privmsg as _parse_privmsg_line
+from utils.paths import Paths
 
 
 class MaiMonitor:
@@ -227,7 +33,7 @@ class MaiMonitor:
         self._last_registry_flush = 0.0
         self.user_history = {}
         self.user_aliases: dict[str, str] = {}
-        self.user_history_dir = Path("jsons/logs/history/users")
+        self.user_history_dir = Path(Paths.USER_HISTORY_DIR)
 
     def connect(self):
         """Connect to Twitch IRC."""
@@ -248,7 +54,7 @@ class MaiMonitor:
 
         except Exception as e:
             print(f"[Mai Monitor] Connection error: {e}")
-            log_event("monitor_connection_error", {"error": str(e)}, "jsons/logs/errors/autonomous_errors.json")
+            log_event("monitor_connection_error", {"error": str(e)}, Paths.AUTONOMOUS_ERRORS)
             return False
 
     def _is_owner(self, username: str) -> bool:
@@ -311,7 +117,7 @@ class MaiMonitor:
         payload["last_seen"] = timestamp
         payload["message_count"] = int(payload.get("message_count", 0)) + 1
         payload["messages"] = entries
-        save_json(user_file, payload)
+        atomic_write_json(user_file, payload)
 
     def send_message(self, message: str):
         """Send message to chat."""
@@ -329,33 +135,14 @@ class MaiMonitor:
             log_event(
                 "monitor_send_error",
                 {"error": str(e), "message": message},
-                "jsons/logs/errors/autonomous_errors.json",
+                Paths.AUTONOMOUS_ERRORS,
             )
 
-    @staticmethod
-    def _parse_irc_tags(tag_text: str | None) -> dict[str, str]:
-        if not tag_text:
-            return {}
-        tags: dict[str, str] = {}
-        for item in tag_text.split(";"):
-            if "=" in item:
-                key, value = item.split("=", 1)
-                tags[key] = value
-            else:
-                tags[item] = ""
-        return tags
-
     def _parse_privmsg(self, line: str) -> tuple[str, str] | None:
-        match = re.match(
-            r"^(?:@(?P<tags>[^ ]+) )?:(?P<nick>[^!]+)![^ ]+ PRIVMSG #[^ ]+ :(?P<message>.+)$",
-            line,
-        )
-        if not match:
+        result = _parse_privmsg_line(line)
+        if result is None:
             return None
-
-        tags = self._parse_irc_tags(match.group("tags"))
-        username = tags.get("display-name") or match.group("nick")
-        message = match.group("message")
+        username, _, message = result
         return username, message
 
     def should_respond(self, username: str, message: str) -> bool:
@@ -420,7 +207,7 @@ class MaiMonitor:
                     "message": message,
                     "error": str(e),
                 },
-                "jsons/logs/errors/autonomous_errors.json",
+                Paths.AUTONOMOUS_ERRORS,
             )
 
             context = detect_context(message)
@@ -444,14 +231,14 @@ class MaiMonitor:
                 "response": response,
                 "timestamp": time.time(),
             },
-            "jsons/logs/history/autonomous_history.json",
+            Paths.AUTONOMOUS_HISTORY,
         )
 
     def listen(self):
         """Main loop: listen to chat and respond autonomously."""
         buffer = ""
         self._last_registry_flush = time.time()
-        self.user_history = load_json("jsons/logs/history/user_registry.json", default={})
+        self.user_history = load_json(Paths.USER_REGISTRY, default={})
         if not isinstance(self.user_history, dict):
             self.user_history = {}
         self.user_aliases = {
@@ -493,7 +280,7 @@ class MaiMonitor:
                             "message": message,
                             "timestamp": now,
                         },
-                        "jsons/logs/history/chat_log.json",
+                        Paths.CHAT_LOG,
                     )
 
                     if username not in self.user_history:
@@ -519,7 +306,7 @@ class MaiMonitor:
                         log_event(
                             "user_history_file_error",
                             {"username": username, "error": str(e)},
-                            "jsons/logs/errors/autonomous_errors.json",
+                            Paths.AUTONOMOUS_ERRORS,
                         )
 
                     if self.should_respond(username, message):
@@ -528,7 +315,7 @@ class MaiMonitor:
 
                 now = time.time()
                 if now - self._last_registry_flush >= self.settings.registry_flush_seconds:
-                    save_json("jsons/logs/history/user_registry.json", self.user_history)
+                    atomic_write_json(Paths.USER_REGISTRY, self.user_history)
                     self._last_registry_flush = now
 
             except KeyboardInterrupt:
@@ -538,10 +325,10 @@ class MaiMonitor:
 
             except Exception as e:
                 print(f"[Mai Monitor] Listen error: {e}")
-                log_event("monitor_listen_error", {"error": str(e)}, "jsons/logs/errors/autonomous_errors.json")
+                log_event("monitor_listen_error", {"error": str(e)}, Paths.AUTONOMOUS_ERRORS)
                 time.sleep(5)
 
-        save_json("jsons/logs/history/user_registry.json", self.user_history)
+        atomic_write_json(Paths.USER_REGISTRY, self.user_history)
 
 
 def main():

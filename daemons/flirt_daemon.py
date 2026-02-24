@@ -15,9 +15,10 @@ from utils.helpers import (
     log_event,
     parse_all_params,
     write_to_file,
-    atomic_write_json
+    atomic_write_json,
 )
-from engine import build_specific_prompt, ask_openrouter
+from utils.paths import Paths
+from engine import build_prompt, ask_openrouter
 
 
 # =============================
@@ -47,7 +48,7 @@ class GlobalRateLimiter:
 
 class UserCooldownTracker:
     """Per-user cooldowns - prevent spam from single user"""
-    def __init__(self, cooldown_file: Path = Path("jsons/data/user_cooldowns.json")):
+    def __init__(self, cooldown_file: Path = Path(Paths.USER_COOLDOWNS)):
         self.cooldown_file = cooldown_file
         self.cooldowns = self._load_cooldowns()
     
@@ -61,7 +62,7 @@ class UserCooldownTracker:
         try:
             atomic_write_json(self.cooldown_file, self.cooldowns)
         except Exception as e:
-            log_event("cooldown_save_error", {"error": str(e)}, "jsons/logs/errors/error_log.json")
+            log_event("cooldown_save_error", {"error": str(e)}, Paths.ERROR_LOG)
     
     def check_cooldown(self, username: str, cooldown_seconds: int = 300) -> tuple[bool, int]:
         """Returns (can_request, seconds_remaining)"""
@@ -125,43 +126,40 @@ if __name__ == "__main__":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-    log_event("flirt_daemon_started", {"args": sys.argv}, "jsons/calls/calls.json")
+    log_event("flirt_daemon_started", {"args": sys.argv}, Paths.CALLS_LOG)
 
     # =============================
     # ARGUMENT PARSING
     # =============================
-    
+
     if len(sys.argv) < 2:
         error_msg = "Usage: python flirt_daemon.py <command_string> [username]"
         print(error_msg)
-        write_to_file("Mai needs parameters! Format: <theme> <tone> <spice> - Example: pagan sultry 5", "jsons/output/flirt_line.txt")
+        write_to_file("Mai needs parameters! Format: <theme> <tone> <spice> - Example: pagan sultry 5", Paths.FLIRT_OUTPUT)
         sys.exit(1)
 
     command_str = sys.argv[1]
     username = sys.argv[2] if len(sys.argv) >= 3 else "Anonymous"
-    
-    # Load validation data
-    themes = load_json("jsons/data/themes.json", default={})
-    tones = load_json("jsons/data/tone.json", default={})
-    spice_levels = load_json("jsons/data/spice.json", default={})
-    
+
     # Parse parameters
     params = parse_all_params(command_str)
     theme = params.get("theme")
     tone = params.get("tone")
     level = params.get("spice")
-    
+
     # Validate level is in range
     if level not in range(1, 11):
         level = min(max(1, level), 10)
-    
+
     # =============================
     # FREE EVENT CONFIGURATION
     # =============================
-    
-    event_config = load_json("jsons/configs/event_config.json", default={})
+
+    # Primary source: config.json["event"]; fallback: standalone event_config.json
+    _main_config = load_json(Paths.CONFIG, default={})
+    event_config = _main_config.get("event") or load_json(Paths.EVENT_CONFIG, default={})
     is_free_event = event_config.get("free_event_active", False)
-    
+
     if is_free_event:
         max_spice = event_config.get("free_event_max_spice", 5)
         if level > max_spice:
@@ -172,100 +170,98 @@ if __name__ == "__main__":
                 "requested": original_level,
                 "capped_to": level,
                 "reason": "free_event"
-            }, "jsons/logs/events/spice_caps.json")
-    
+            }, Paths.SPICE_CAPS_LOG)
+
     # =============================
     # RATE LIMITING CHECKS
     # =============================
-        
+
     # Global rate limit
     can_request, rate_message = global_limiter.allow_request()
     if not can_request:
         print(rate_message)
-        write_to_file(rate_message, "jsons/output/flirt_line.txt")
+        write_to_file(rate_message, Paths.FLIRT_OUTPUT)
         log_event("rate_limited", {
             "username": username,
             "reason": "global_limit",
             "message": rate_message
-        }, "jsons/logs/errors/rate_limits.json")
+        }, Paths.RATE_LIMITS_LOG)
         sys.exit(0)
-    
+
     # User cooldown
     cooldown_seconds = event_config.get("free_event_cooldown_seconds", 300) if is_free_event else 300
     can_request, remaining = user_tracker.check_cooldown(username, cooldown_seconds)
-    
+
     if not can_request:
-        cooldown_data = load_json("jsons/data/cooldown_msg.json", default={})
-        print(f"DEBUG: Loaded {len(cooldown_data.get('cooldown_messages', []))} cooldown messages")  # ← ADD THIS
+        cooldown_data = load_json(Paths.COOLDOWN_MSGS, default={})
         cooldown_set = cooldown_data.get("cooldown_messages", [
             "Give me {remaining}s to recharge for you! 💜"
         ])
-        print(f"DEBUG: Loaded {len(cooldown_set)} cooldown messages")  # ← ADD THIS
-        
+
         # Load history to avoid repeats
-        history_file = Path("jsons/data/cooldown_history.json")
+        history_file = Path(Paths.COOLDOWN_HISTORY)
         if history_file.exists():
             history = load_json(history_file, default={})
             last_used = history.get("last_used", [])
         else:
             last_used = []
-        
+
         # Filter out last 3 used messages
         available = [msg for msg in cooldown_set if msg not in last_used]
-        
+
         # If exhausted all options, reset history
         if not available:
             available = cooldown_set
             last_used = []
-        
+
         # Pick random from available
         template = random.choice(available)
-        
+
         # Update history (keep last 3)
         last_used.append(template)
         if len(last_used) > 3:
             last_used.pop(0)
-        
+
         # Save history
         atomic_write_json(history_file, {"last_used": last_used})
-        
+
         # Format with username and remaining time
         cooldown_msg = f"@{username} - " + template.format(remaining=remaining)
 
         print(cooldown_msg)
-        write_to_file(cooldown_msg, "jsons/output/flirt_line.txt")
+        write_to_file(cooldown_msg, Paths.FLIRT_OUTPUT)
         log_event("user_cooldown", {
             "username": username,
             "remaining_seconds": remaining,
             "cooldown_duration": cooldown_seconds,
             "cooldown_message": template
-        }, "jsons/logs/errors/rate_limits.json")
+        }, Paths.RATE_LIMITS_LOG)
         sys.exit(0)
-    
+
     # =============================
     # GENERATE FLIRT
     # =============================
-    
+
     try:
         print(f"Generating flirt for @{username}: theme={theme}, tone={tone}, spice={level}")
-        
-        prompt = build_specific_prompt(theme, tone, level)
-        flirt_line = ask_openrouter(prompt)
-        
+
+        prompt = build_prompt(theme, tone, level)
+        flirt_line = ask_openrouter(prompt, spicy=(level >= 7))
+
         # Check if OpenRouter returned an error
         if flirt_line.startswith("WARNING:"):
             raise Exception(flirt_line)
-        
+
         # =============================
         # SAFETY CHECK
         # =============================
-        
+
         is_safe, safety_reason = safety_check(flirt_line)
         if not is_safe:
             error_msg = "Mai detected unsafe content and blocked this flirt. Try different parameters! 🛡️"
             print(f"SAFETY VIOLATION: {safety_reason}")
             print(error_msg)
-            write_to_file(error_msg, "jsons/output/flirt_line.txt")
+            write_to_file(error_msg, Paths.FLIRT_OUTPUT)
             log_event("safety_violation", {
                 "username": username,
                 "theme": theme,
@@ -273,25 +269,25 @@ if __name__ == "__main__":
                 "level": level,
                 "reason": safety_reason,
                 "blocked_output": flirt_line
-            }, "jsons/logs/errors/safety_log.json")
+            }, Paths.SAFETY_LOG)
             sys.exit(0)
-        
+
         # =============================
         # REDACTION
         # =============================
-        
-        redaction_data = load_json("jsons/data/redaction.json", default={}).get("redaction", {})
+
+        redaction_data = load_json(Paths.REDACTION, default={}).get("redaction", {})
         redacted_flirt_line = apply_redaction(flirt_line, level, redaction_data)
-        
+
         # =============================
         # OUTPUT & LOGGING
         # =============================
-        
+
         print(f"SUCCESS!")
         print(f"THEME: {theme}, TONE: {tone}, SPICE: {level}, USER: @{username}")
         print(f"RAW: {flirt_line}")
         print(f"FINAL: {redacted_flirt_line}")
-        
+
         # Log successful generation
         log_event("flirt_generated", {
             "username": username,
@@ -301,8 +297,8 @@ if __name__ == "__main__":
             "flirt_line": flirt_line,
             "redacted_flirt_line": redacted_flirt_line,
             "is_free_event": is_free_event
-        }, "jsons/logs/history/flirt_history.json")
-        
+        }, Paths.FLIRT_HISTORY)
+
         # Log prompt for debugging
         log_event("prompt_made", {
             "username": username,
@@ -310,18 +306,18 @@ if __name__ == "__main__":
             "tone": tone,
             "level": level,
             "prompt": prompt
-        }, "jsons/logs/prompts/prompt_history.json")
-        
+        }, Paths.PROMPT_HISTORY)
+
         # Write output for Streamer.bot to read
-        write_to_file(redacted_flirt_line, "jsons/output/flirt_line.txt")
-        
+        write_to_file(redacted_flirt_line, Paths.FLIRT_OUTPUT)
+
     except Exception as e:
         # =============================
         # GRACEFUL DEGRADATION
         # =============================
-        
+
         fallback = random.choice(FALLBACK_FLIRTS)
-        
+
         # Detailed error information
         error_details = {
             "username": username,
@@ -333,13 +329,13 @@ if __name__ == "__main__":
             "error_traceback": traceback.format_exc(),
             "fallback_used": fallback
         }
-        
+
         print(f"ERROR TYPE: {type(e).__name__}")
         print(f"ERROR MESSAGE: {e}")
         print(f"TRACEBACK:\n{traceback.format_exc()}")
         print(f"FALLBACK: {fallback}")
-        
-        write_to_file(fallback, "jsons/output/flirt_line.txt")
-        log_event("generation_error", error_details, "jsons/logs/errors/error_log.json")
-        
+
+        write_to_file(fallback, Paths.FLIRT_OUTPUT)
+        log_event("generation_error", error_details, Paths.ERROR_LOG)
+
         sys.exit(0)  # Exit gracefully even on error
