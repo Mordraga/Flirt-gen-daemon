@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 import requests
 
-from helpers import atomic_write_json, load_json, log_event, utc_now_iso
+from utils.helpers import atomic_write_json, load_json, log_event, utc_now_iso
 
 
 TWITTER_OAUTH2_TOKEN_URL = "https://api.twitter.com/oauth2/token"
@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Initialize OAuth credentials for Twitter + Twitch and write them to keys.json."
     )
-    parser.add_argument("--keys-file", default="configs/keys.json", help="Path to keys JSON file")
+    parser.add_argument("--keys-file", default="jsons/configs/keys.json", help="Path to keys JSON file")
 
     parser.add_argument("--twitter", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--twitter-api-key", default=None)
@@ -263,7 +263,7 @@ def main() -> int:
     log_event(
         "oauth_init_started",
         {"keys_file": args.keys_file, "at_utc": utc_now_iso(), "twitter": do_twitter, "twitch": do_twitch},
-        "logs/calls/calls.json",
+        "jsons/calls/calls.json",
     )
 
     try:
@@ -281,7 +281,7 @@ def main() -> int:
                 "twitter": do_twitter,
                 "twitch": do_twitch,
             },
-            "logs/calls/calls.json",
+            "jsons/calls/calls.json",
         )
         print(f"\nSaved credentials to {args.keys_file}")
         return 0
@@ -290,7 +290,7 @@ def main() -> int:
         log_event(
             "oauth_init_failed",
             {"keys_file": args.keys_file, "error": str(exc)},
-            "logs/calls/calls.json",
+            "jsons/calls/calls.json",
         )
         print(f"OAuth init failed: {exc}")
         return 1

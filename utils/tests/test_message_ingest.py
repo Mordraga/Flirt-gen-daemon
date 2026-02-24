@@ -1,6 +1,6 @@
 import unittest
 
-from message_ingest import (
+from utils.message_ingest import (
     build_twitter_audit_payload,
     build_output_path,
     ensure_root_tweet_present,
@@ -36,7 +36,7 @@ class MessageIngestTests(unittest.TestCase):
 
     def test_build_output_path_sanitizes_scope(self):
         path = build_output_path("twitter", "conversation_id:123/456")
-        self.assertEqual(str(path), "logs\\ingest\\twitter_conversation_id_123_456.jsonl")
+        self.assertEqual(str(path), "jsons\\logs\\ingest\\twitter_conversation_id_123_456.jsonl")
 
     def test_ensure_root_tweet_present_adds_missing_root(self):
         reply = IngestedMessage(

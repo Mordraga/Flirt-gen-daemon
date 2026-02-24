@@ -1,1 +1,58 @@
-configs/keys.json
+# -----------------------------
+# Python bytecode / cache
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# -----------------------------
+# Build / packaging artifacts
+# -----------------------------
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+*.spec
+build_mai_ui.ps1
+requirements-ui.txt
+build_verify/
+
+# -----------------------------
+# Runtime output / generated data
+# -----------------------------
+logs/
+output/
+
+# -----------------------------
+# Local secrets / machine-local config
+# -----------------------------
+.env
+.env.*
+jsons/configs/keys.json
+
+# -----------------------------
+# Editor / OS clutter
+# -----------------------------
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini

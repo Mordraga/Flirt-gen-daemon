@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from helpers import (
+from utils.helpers import (
     atomic_write_json,
     append_jsonl_many,
     get_secret,
@@ -284,13 +284,13 @@ def capture_twitch_chat_messages(
 
 def build_output_path(platform: str, scope_id: str) -> Path:
     safe_scope = sanitize_path_component(scope_id)
-    return Path("logs") / "ingest" / f"{platform}_{safe_scope}.jsonl"
+    return Path("jsons") / "logs" / "ingest" / f"{platform}_{safe_scope}.jsonl"
 
 
 def build_output_path_with_ext(platform: str, scope_id: str, ext: str) -> Path:
     safe_scope = sanitize_path_component(scope_id)
     safe_ext = ext.lstrip(".")
-    return Path("logs") / "ingest" / f"{platform}_{safe_scope}.{safe_ext}"
+    return Path("jsons") / "logs" / "ingest" / f"{platform}_{safe_scope}.{safe_ext}"
 
 
 def build_twitter_audit_payload(
@@ -333,18 +333,18 @@ def build_twitter_audit_payload(
 def run_twitter_thread(args: argparse.Namespace, keys: dict) -> int:
     bearer_token = get_secret(keys, "TWITTER_BEARER_TOKEN", "twitter_bearer_token")
     if not bearer_token:
-        print("Missing Twitter bearer token. Set TWITTER_BEARER_TOKEN or configs/keys.json.twitter_bearer_token")
+        print("Missing Twitter bearer token. Set TWITTER_BEARER_TOKEN or jsons/configs/keys.json.twitter_bearer_token")
         log_event(
             "ingest_failed",
             {"source": "twitter-thread", "reason": "missing_twitter_bearer_token"},
-            "logs/calls/calls.json",
+            "jsons/calls/calls.json",
         )
         return 1
 
     log_event(
         "ingest_started",
         {"source": "twitter-thread", "conversation_id": args.conversation_id},
-        "logs/calls/calls.json",
+        "jsons/calls/calls.json",
     )
 
     messages = fetch_twitter_thread_messages(
@@ -382,7 +382,7 @@ def run_twitter_thread(args: argparse.Namespace, keys: dict) -> int:
             "count": len(messages),
             "output_path": str(output_path),
         },
-        "logs/calls/calls.json",
+        "jsons/calls/calls.json",
     )
     print(f"Ingested {len(messages)} twitter messages into {output_path}")
     return 0
@@ -393,26 +393,26 @@ def run_twitch_chat(args: argparse.Namespace, keys: dict) -> int:
     bot_username = get_secret(keys, "TWITCH_BOT_USERNAME", "twitch_bot_username")
 
     if not oauth_token:
-        print("Missing Twitch OAuth token. Set TWITCH_OAUTH_TOKEN or configs/keys.json.twitch_oauth_token")
+        print("Missing Twitch OAuth token. Set TWITCH_OAUTH_TOKEN or jsons/configs/keys.json.twitch_oauth_token")
         log_event(
             "ingest_failed",
             {"source": "twitch-chat", "reason": "missing_twitch_oauth_token"},
-            "logs/calls/calls.json",
+            "jsons/calls/calls.json",
         )
         return 1
     if not bot_username:
-        print("Missing Twitch bot username. Set TWITCH_BOT_USERNAME or configs/keys.json.twitch_bot_username")
+        print("Missing Twitch bot username. Set TWITCH_BOT_USERNAME or jsons/configs/keys.json.twitch_bot_username")
         log_event(
             "ingest_failed",
             {"source": "twitch-chat", "reason": "missing_twitch_bot_username"},
-            "logs/calls/calls.json",
+            "jsons/calls/calls.json",
         )
         return 1
 
     log_event(
         "ingest_started",
         {"source": "twitch-chat", "channel": args.channel, "duration": args.duration},
-        "logs/calls/calls.json",
+        "jsons/calls/calls.json",
     )
 
     messages = capture_twitch_chat_messages(
@@ -434,7 +434,7 @@ def run_twitch_chat(args: argparse.Namespace, keys: dict) -> int:
             "count": len(messages),
             "output_path": str(output_path),
         },
-        "logs/calls/calls.json",
+        "jsons/calls/calls.json",
     )
     print(f"Ingested {len(messages)} twitch messages into {output_path}")
     return 0
@@ -444,7 +444,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Scoped message ingestion MVP for Twitter threads and Twitch chat."
     )
-    parser.add_argument("--keys-file", default="configs/keys.json", help="Path to keys JSON file")
+    parser.add_argument("--keys-file", default="jsons/configs/keys.json", help="Path to keys JSON file")
 
     subparsers = parser.add_subparsers(dest="source", required=True)
 
@@ -479,7 +479,7 @@ def main() -> int:
         log_event(
             "ingest_error",
             {"source": args.source, "error": str(exc)},
-            "logs/calls/calls.json",
+            "jsons/calls/calls.json",
         )
         raise
 

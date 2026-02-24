@@ -1,0 +1,8 @@
+{
+  "flirt": {
+    "file": "daemons/flirt_daemon.py"
+  },
+  "tarot": {
+    "file": "daemons/tarot_daemon.py"
+  }
+}

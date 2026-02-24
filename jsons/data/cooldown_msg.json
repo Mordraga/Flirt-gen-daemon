@@ -1,0 +1,14 @@
+{
+    "cooldown_messages": [
+        "I may have a lot of stamina but you gotta give me {remaining} to catch my breath!",
+        "Hold on, I'm still recovering from our last flirt! {remaining} left before I'm ready again.",
+        "Even I need a moment to recharge my flirt batteries! {remaining} until I'm back at full power.",
+        "Patience, darling! {remaining} until I'm ready to sweep you off your feet again.",
+        "I'm still basking in the afterglow of our last flirt! {remaining} until I'm ready for round two.",
+
+        "Astarte said I was being to flirty. Give me {remaining} to calm down.",
+        "Anubis was getting mad that I was flirting too much. {remaining} until I'm back in his good graces.",
+        "Bast said I was being too spicy. {remaining} until I can go back to being her sweet kitty.",
+        "Hathor said I was being too romantic. {remaining} until she leaves me alone."
+    ]
+}

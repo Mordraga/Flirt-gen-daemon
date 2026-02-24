@@ -1,5 +1,5 @@
 import requests
-from helpers import (
+from utils.helpers import (
     load_json,
     load_config,
     load_keys,
@@ -14,9 +14,9 @@ def build_specific_prompt(theme, tone, level):
 # =============================
 # Prompt Builder
 # =============================
-theme_data = load_json("data/themes.json")
-tone_data = load_json("data/tone.json")
-spice_data = load_json("data/spice.json")
+theme_data = load_json("jsons/data/themes.json")
+tone_data = load_json("jsons/data/tone.json")
+spice_data = load_json("jsons/data/spice.json")
 
 def build_prompt(theme: str, tone: str, level: int) -> str:
     # Extract relevant data
@@ -24,7 +24,7 @@ def build_prompt(theme: str, tone: str, level: int) -> str:
     tone_obj = tone_data.get(tone, {})
     spice_obj = spice_data.get(str(level), {})
 
-# Extract Description and Anchors
+    # Extract Description and Anchors
     theme_desc = theme_obj.get("description") or "No description available."
     theme_anchors = theme_obj.get("anchors", [])
 
@@ -68,11 +68,11 @@ def ask_openrouter(prompt: str) -> str:
     keys = load_keys()
 
     # Read from Mai-config section (with fallbacks)
-    mai_config = config.get("Mai-config", config)  # If no Mai-config, use root config
+    mai_config = config.get("Mai-config", config)
     
     api_key = keys.get("openrouter_api_key")
     if not api_key:
-        return "WARNING: Missing OpenRouter API key in configs/keys.json"
+        return "WARNING: Missing OpenRouter API key in jsons/configs/keys.json"
     
     model = mai_config.get("model", "mistralai/mistral-7b-instruct")
     max_tokens = mai_config.get("max_tokens", 60)
@@ -105,7 +105,7 @@ def ask_openrouter(prompt: str) -> str:
         return data["choices"][0]["message"]["content"].strip()
 
     except requests.RequestException as e:
-        log_event("openrouter_error", {"error": str(e)}, "logs/errors/error_log.json")
+        log_event("openrouter_error", {"error": str(e)}, "jsons/logs/errors/error_log.json")
         return f"WARNING: OpenRouter error: {e}"
 
 # =============================

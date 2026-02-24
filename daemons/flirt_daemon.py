@@ -1,15 +1,19 @@
 import sys
-import json
 import random
 import re
 import time
 import traceback
 from collections import deque
 from pathlib import Path
-from helpers import (
+
+# Add parent directory to path so we can import engine
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from utils.helpers import (
     load_json,
     apply_redaction,
     log_event,
+    parse_all_params,
     write_to_file,
     atomic_write_json
 )
@@ -43,7 +47,7 @@ class GlobalRateLimiter:
 
 class UserCooldownTracker:
     """Per-user cooldowns - prevent spam from single user"""
-    def __init__(self, cooldown_file: Path = Path("data/user_cooldowns.json")):
+    def __init__(self, cooldown_file: Path = Path("jsons/data/user_cooldowns.json")):
         self.cooldown_file = cooldown_file
         self.cooldowns = self._load_cooldowns()
     
@@ -57,7 +61,7 @@ class UserCooldownTracker:
         try:
             atomic_write_json(self.cooldown_file, self.cooldowns)
         except Exception as e:
-            log_event("cooldown_save_error", {"error": str(e)}, "logs/errors/error_log.json")
+            log_event("cooldown_save_error", {"error": str(e)}, "jsons/logs/errors/error_log.json")
     
     def check_cooldown(self, username: str, cooldown_seconds: int = 300) -> tuple[bool, int]:
         """Returns (can_request, seconds_remaining)"""
@@ -121,7 +125,7 @@ if __name__ == "__main__":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-    log_event("flirt_daemon_started", {"args": sys.argv}, "logs/calls/calls.json")
+    log_event("flirt_daemon_started", {"args": sys.argv}, "jsons/calls/calls.json")
 
     # =============================
     # ARGUMENT PARSING
@@ -130,35 +134,22 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         error_msg = "Usage: python flirt_daemon.py <command_string> [username]"
         print(error_msg)
-        write_to_file("Mai needs parameters! Format: <theme> <tone> <spice> - Example: pagan sultry 5", "output/flirt_line.txt")
+        write_to_file("Mai needs parameters! Format: <theme> <tone> <spice> - Example: pagan sultry 5", "jsons/output/flirt_line.txt")
         sys.exit(1)
 
     command_str = sys.argv[1]
     username = sys.argv[2] if len(sys.argv) >= 3 else "Anonymous"
     
     # Load validation data
-    themes = load_json("data/themes.json", default={})
-    tones = load_json("data/tone.json", default={})
-    spice_levels = load_json("data/spice.json", default={})
+    themes = load_json("jsons/data/themes.json", default={})
+    tones = load_json("jsons/data/tone.json", default={})
+    spice_levels = load_json("jsons/data/spice.json", default={})
     
-    # Parse command string for theme, tone, spice
-    theme = None
-    tone = None
-    level = None
-    
-    for token in command_str.split():
-        cleaned = token.strip().lower()
-        if cleaned in themes and theme is None:
-            theme = cleaned
-        elif cleaned in tones and tone is None:
-            tone = cleaned
-        elif cleaned.isdigit() and cleaned in spice_levels and level is None:
-            level = int(cleaned)
-    
-    # Apply defaults for missing params
-    theme = theme or "general"
-    tone = tone or "playful"
-    level = level or 3
+    # Parse parameters
+    params = parse_all_params(command_str)
+    theme = params.get("theme")
+    tone = params.get("tone")
+    level = params.get("spice")
     
     # Validate level is in range
     if level not in range(1, 11):
@@ -168,7 +159,7 @@ if __name__ == "__main__":
     # FREE EVENT CONFIGURATION
     # =============================
     
-    event_config = load_json("configs/event_config.json", default={})
+    event_config = load_json("jsons/configs/event_config.json", default={})
     is_free_event = event_config.get("free_event_active", False)
     
     if is_free_event:
@@ -181,22 +172,22 @@ if __name__ == "__main__":
                 "requested": original_level,
                 "capped_to": level,
                 "reason": "free_event"
-            }, "logs/events/spice_caps.json")
+            }, "jsons/logs/events/spice_caps.json")
     
     # =============================
     # RATE LIMITING CHECKS
     # =============================
-    
+        
     # Global rate limit
     can_request, rate_message = global_limiter.allow_request()
     if not can_request:
         print(rate_message)
-        write_to_file(rate_message, "output/flirt_line.txt")
+        write_to_file(rate_message, "jsons/output/flirt_line.txt")
         log_event("rate_limited", {
             "username": username,
             "reason": "global_limit",
             "message": rate_message
-        }, "logs/errors/rate_limits.json")
+        }, "jsons/logs/errors/rate_limits.json")
         sys.exit(0)
     
     # User cooldown
@@ -204,14 +195,51 @@ if __name__ == "__main__":
     can_request, remaining = user_tracker.check_cooldown(username, cooldown_seconds)
     
     if not can_request:
-        cooldown_msg = f"@{username} - Mai needs {remaining}s to recharge for you! 💜"
+        cooldown_data = load_json("jsons/data/cooldown_msg.json", default={})
+        print(f"DEBUG: Loaded {len(cooldown_data.get('cooldown_messages', []))} cooldown messages")  # ← ADD THIS
+        cooldown_set = cooldown_data.get("cooldown_messages", [
+            "Give me {remaining}s to recharge for you! 💜"
+        ])
+        print(f"DEBUG: Loaded {len(cooldown_set)} cooldown messages")  # ← ADD THIS
+        
+        # Load history to avoid repeats
+        history_file = Path("jsons/data/cooldown_history.json")
+        if history_file.exists():
+            history = load_json(history_file, default={})
+            last_used = history.get("last_used", [])
+        else:
+            last_used = []
+        
+        # Filter out last 3 used messages
+        available = [msg for msg in cooldown_set if msg not in last_used]
+        
+        # If exhausted all options, reset history
+        if not available:
+            available = cooldown_set
+            last_used = []
+        
+        # Pick random from available
+        template = random.choice(available)
+        
+        # Update history (keep last 3)
+        last_used.append(template)
+        if len(last_used) > 3:
+            last_used.pop(0)
+        
+        # Save history
+        atomic_write_json(history_file, {"last_used": last_used})
+        
+        # Format with username and remaining time
+        cooldown_msg = f"@{username} - " + template.format(remaining=remaining)
+
         print(cooldown_msg)
-        write_to_file(cooldown_msg, "output/flirt_line.txt")
+        write_to_file(cooldown_msg, "jsons/output/flirt_line.txt")
         log_event("user_cooldown", {
             "username": username,
             "remaining_seconds": remaining,
-            "cooldown_duration": cooldown_seconds
-        }, "logs/errors/rate_limits.json")
+            "cooldown_duration": cooldown_seconds,
+            "cooldown_message": template
+        }, "jsons/logs/errors/rate_limits.json")
         sys.exit(0)
     
     # =============================
@@ -237,7 +265,7 @@ if __name__ == "__main__":
             error_msg = "Mai detected unsafe content and blocked this flirt. Try different parameters! 🛡️"
             print(f"SAFETY VIOLATION: {safety_reason}")
             print(error_msg)
-            write_to_file(error_msg, "output/flirt_line.txt")
+            write_to_file(error_msg, "jsons/output/flirt_line.txt")
             log_event("safety_violation", {
                 "username": username,
                 "theme": theme,
@@ -245,14 +273,14 @@ if __name__ == "__main__":
                 "level": level,
                 "reason": safety_reason,
                 "blocked_output": flirt_line
-            }, "logs/errors/safety_log.json")
+            }, "jsons/logs/errors/safety_log.json")
             sys.exit(0)
         
         # =============================
         # REDACTION
         # =============================
         
-        redaction_data = load_json("data/redaction.json", default={}).get("redaction", {})
+        redaction_data = load_json("jsons/data/redaction.json", default={}).get("redaction", {})
         redacted_flirt_line = apply_redaction(flirt_line, level, redaction_data)
         
         # =============================
@@ -273,7 +301,7 @@ if __name__ == "__main__":
             "flirt_line": flirt_line,
             "redacted_flirt_line": redacted_flirt_line,
             "is_free_event": is_free_event
-        }, "logs/history/flirt_history.json")
+        }, "jsons/logs/history/flirt_history.json")
         
         # Log prompt for debugging
         log_event("prompt_made", {
@@ -282,10 +310,10 @@ if __name__ == "__main__":
             "tone": tone,
             "level": level,
             "prompt": prompt
-        }, "logs/prompts/prompt_history.json")
+        }, "jsons/logs/prompts/prompt_history.json")
         
         # Write output for Streamer.bot to read
-        write_to_file(redacted_flirt_line, "output/flirt_line.txt")
+        write_to_file(redacted_flirt_line, "jsons/output/flirt_line.txt")
         
     except Exception as e:
         # =============================
@@ -311,7 +339,7 @@ if __name__ == "__main__":
         print(f"TRACEBACK:\n{traceback.format_exc()}")
         print(f"FALLBACK: {fallback}")
         
-        write_to_file(fallback, "output/flirt_line.txt")
-        log_event("generation_error", error_details, "logs/errors/error_log.json")
+        write_to_file(fallback, "jsons/output/flirt_line.txt")
+        log_event("generation_error", error_details, "jsons/logs/errors/error_log.json")
         
         sys.exit(0)  # Exit gracefully even on error

@@ -2,6 +2,7 @@ import json
 import os
 import random
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -13,6 +14,47 @@ from typing import Any, Iterable, Mapping
 # Filesystem + data helpers
 # ============================
 
+def _candidate_app_roots() -> list[Path]:
+    roots: list[Path] = []
+
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            roots.append(Path(meipass))
+
+        exe_dir = Path(sys.executable).resolve().parent
+        roots.append(exe_dir)
+        roots.append(exe_dir / "_internal")
+
+    # Source tree root when running from Python files.
+    roots.append(Path(__file__).resolve().parent.parent)
+
+    unique_roots: list[Path] = []
+    seen: set[Path] = set()
+    for root in roots:
+        if root in seen:
+            continue
+        seen.add(root)
+        unique_roots.append(root)
+    return unique_roots
+
+
+def resolve_existing_path(file_path: str | Path) -> Path:
+    path = Path(file_path)
+    if path.is_absolute():
+        return path
+
+    if path.exists():
+        return path
+
+    for root in _candidate_app_roots():
+        candidate = root / path
+        if candidate.exists():
+            return candidate
+
+    return path
+
+
 def ensure_parent_dir(file_path: str | Path) -> Path:
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -20,7 +62,7 @@ def ensure_parent_dir(file_path: str | Path) -> Path:
 
 
 def load_json(file_path: str | Path, default: Any = None) -> Any:
-    path = Path(file_path)
+    path = resolve_existing_path(file_path)
     if not path.exists():
         if default is not None:
             return default
@@ -105,11 +147,11 @@ def get_secret(
 # ============================
 
 def load_config() -> dict:
-    return load_json("configs/config.json")
+    return load_json("jsons/configs/config.json")
 
 
 def load_keys() -> dict:
-    return load_json("configs/keys.json")
+    return load_json("jsons/configs/keys.json")
 
 
 # ============================
@@ -172,15 +214,20 @@ def log_event(event_type: str, payload: Mapping[str, Any], file_path: str | Path
     write_to_log(entry, file_path)
 
 
+def save_json(path, data):
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
 # ============================
 # Parse Streamer.bot
 # ============================
 
 def parse_all_params(command_str: str) -> dict:
     """Parse theme, tone, and spice from command string"""
-    themes = load_json("data/themes.json", default={})
-    tones = load_json("data/tone.json", default={})
-    spice_levels = load_json("data/spice.json", default={})
+    themes = load_json("jsons/data/themes.json", default={})
+    tones = load_json("jsons/data/tone.json", default={})
+    spice_levels = load_json("jsons/data/spice.json", default={})
     
     result = {
         "theme": None,
@@ -193,9 +240,9 @@ def parse_all_params(command_str: str) -> dict:
         
         if cleaned in themes and result["theme"] is None:
             result["theme"] = cleaned
-        elif cleaned in tones and result["tone"] is None:
+        if cleaned in tones and result["tone"] is None:
             result["tone"] = cleaned
-        elif cleaned.isdigit() and cleaned in spice_levels and result["spice"] is None:
+        if cleaned.isdigit() and cleaned in spice_levels and result["spice"] is None:
             result["spice"] = int(cleaned)
     
     return result

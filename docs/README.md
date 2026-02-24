@@ -1,6 +1,48 @@
 # Flirt-gen-daemon
 A LLM flirting engine that generates categorized output based on desired sensuality.
 
+## Mai Control Panel (MVP)
+
+`mai_control_panel.py` provides a local desktop UI to:
+- Start/stop `mai_monitor.py`
+- Edit monitor runtime config live
+- Launch other Python scripts in this repo
+- View process output logs
+
+### Run UI
+
+```bash
+pip install -r requirements-ui.txt
+python mai_control_panel.py
+```
+
+### Tray behavior
+
+- If `pystray` + `pillow` are installed, minimizing/closing the window sends it to system tray.
+- Without those packages, it falls back to normal taskbar minimize behavior.
+
+### Build `.exe`
+
+Use:
+
+```powershell
+.\build_mai_ui.ps1
+```
+
+Output:
+- `dist/MaiControlPanel/MaiControlPanel.exe`
+
+### Monitor runtime config
+
+`mai_monitor.py` now reads `jsons/configs/config.json` -> `monitor` and hot-reloads it while running.
+Example keys:
+- `response_chance_percent`
+- `global_cooldown_seconds`
+- `ignored_bot_usernames`
+- `respond_to_owner_always`
+- `owner_username`
+- `config_reload_seconds`
+
 ## Message Ingestion MVP
 
 `message_ingest.py` captures scoped messages from:

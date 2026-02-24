@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import (
+from utils.helpers import (
     append_jsonl_many,
     atomic_write_json,
     get_secret,
