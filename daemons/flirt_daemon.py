@@ -1,9 +1,7 @@
 import sys
 import random
 import re
-import time
 import traceback
-from collections import deque
 from pathlib import Path
 
 # Add parent directory to path so we can import engine
@@ -18,65 +16,8 @@ from utils.helpers import (
     atomic_write_json,
 )
 from utils.paths import Paths
+from utils.rate_limiter import GlobalRateLimiter, UserCooldownTracker
 from engine import build_prompt, ask_openrouter
-
-
-# =============================
-# RATE LIMITING
-# =============================
-
-class GlobalRateLimiter:
-    """Prevent API spam - max requests per minute"""
-    def __init__(self, max_calls: int = 30, window: int = 60):
-        self.max_calls = max_calls
-        self.window = window
-        self.calls = deque()
-    
-    def allow_request(self) -> tuple[bool, str]:
-        now = time.time()
-        # Remove old calls outside window
-        while self.calls and self.calls[0] < now - self.window:
-            self.calls.popleft()
-        
-        if len(self.calls) < self.max_calls:
-            self.calls.append(now)
-            return True, ""
-        
-        wait_time = int(self.calls[0] + self.window - now) + 1
-        return False, f"Mai is catching her breath! Try again in {wait_time}s 💜"
-
-
-class UserCooldownTracker:
-    """Per-user cooldowns - prevent spam from single user"""
-    def __init__(self, cooldown_file: Path = Path(Paths.USER_COOLDOWNS)):
-        self.cooldown_file = cooldown_file
-        self.cooldowns = self._load_cooldowns()
-    
-    def _load_cooldowns(self) -> dict:
-        try:
-            return load_json(self.cooldown_file, default={})
-        except:
-            return {}
-    
-    def _save_cooldowns(self):
-        try:
-            atomic_write_json(self.cooldown_file, self.cooldowns)
-        except Exception as e:
-            log_event("cooldown_save_error", {"error": str(e)}, Paths.ERROR_LOG)
-    
-    def check_cooldown(self, username: str, cooldown_seconds: int = 300) -> tuple[bool, int]:
-        """Returns (can_request, seconds_remaining)"""
-        now = time.time()
-        last_request = self.cooldowns.get(username, 0)
-        elapsed = now - last_request
-        
-        if elapsed >= cooldown_seconds:
-            self.cooldowns[username] = now
-            self._save_cooldowns()
-            return True, 0
-        
-        remaining = int(cooldown_seconds - elapsed)
-        return False, remaining
 
 
 # Global instances
@@ -95,7 +36,7 @@ UNSAFE_PATTERNS = [
 ]
 
 def safety_check(text: str) -> tuple[bool, str]:
-    """Returns (is_safe, reason)"""
+    """Returns (is_safe, reason)."""
     for pattern in UNSAFE_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
             return False, "Content flagged by safety filter"
@@ -106,12 +47,9 @@ def safety_check(text: str) -> tuple[bool, str]:
 # FALLBACK RESPONSES
 # =============================
 
-FALLBACK_FLIRTS = [
-    "Mai's servers are taking a coffee break... but you're still looking fine! ☕✨",
-    "Technical difficulties, but the real magic is you being here! 💜",
-    "OpenRouter is being shy, but Mai thinks you're adorable anyway! 🌙",
-    "Mai's brain is buffering, but your vibe is already loaded! 🔮",
-    "Error 418: I'm a teapot, but you're still brewing something special! 🫖💕"
+_fb_data = load_json(Paths.FALLBACK_FLIRTS, default={})
+FALLBACK_FLIRTS: list[str] = _fb_data.get("fallback_flirts") or [
+    "Mai's magic is resting, but you're worth the wait! 💜"
 ]
 
 
@@ -141,15 +79,14 @@ if __name__ == "__main__":
     command_str = sys.argv[1]
     username = sys.argv[2] if len(sys.argv) >= 3 else "Anonymous"
 
-    # Parse parameters
+    # Parse parameters — agnostic: use what's found, fall back on missing values
     params = parse_all_params(command_str)
-    theme = params.get("theme")
-    tone = params.get("tone")
-    level = params.get("spice")
 
-    # Validate level is in range
-    if level not in range(1, 11):
-        level = min(max(1, level), 10)
+    _themes_data = load_json(Paths.THEMES, default={})
+    _tones_data = load_json(Paths.TONES, default={})
+    theme = params.get("theme") or (random.choice(list(_themes_data.keys())) if _themes_data else "pagan")
+    tone  = params.get("tone")  or (random.choice(list(_tones_data.keys()))  if _tones_data  else "sultry")
+    level = params.get("spice") or 3
 
     # =============================
     # FREE EVENT CONFIGURATION

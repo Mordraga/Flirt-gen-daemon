@@ -221,25 +221,42 @@ def log_event(event_type: str, payload: Mapping[str, Any], file_path: str | Path
 # ============================
 
 def parse_all_params(command_str: str) -> dict:
-    """Parse theme, tone, and spice from command string"""
-    themes = load_json("jsons/data/themes.json", default={})
-    tones = load_json("jsons/data/tone.json", default={})
-    spice_levels = load_json("jsons/data/spice.json", default={})
-    
-    result = {
+    """Parse theme, tone, spice, spread, and question from any rawInput string.
+
+    Agnostically collects whatever it can find. Each value is None when not
+    found — callers apply their own defaults. Unconsumed tokens are joined into
+    ``question`` (useful for tarot readings).
+    """
+    from utils.paths import Paths  # local import to avoid circular dependency
+
+    themes = load_json(Paths.THEMES, default={})
+    tones = load_json(Paths.TONES, default={})
+    spice_levels = load_json(Paths.SPICE, default={})
+    spreads = load_json(Paths.TAROT_SPREADS, default={})
+
+    result: dict = {
         "theme": None,
         "tone": None,
-        "spice": None
+        "spice": None,
+        "spread": None,
+        "question": "",
     }
-    
+
+    question_tokens: list[str] = []
+
     for token in command_str.split():
-        cleaned = token.strip().lower()
-        
+        cleaned = token.strip().lower().rstrip(".,!?\"'")
+
         if cleaned in themes and result["theme"] is None:
             result["theme"] = cleaned
-        if cleaned in tones and result["tone"] is None:
+        elif cleaned in tones and result["tone"] is None:
             result["tone"] = cleaned
-        if cleaned.isdigit() and cleaned in spice_levels and result["spice"] is None:
+        elif cleaned.isdigit() and cleaned in spice_levels and result["spice"] is None:
             result["spice"] = int(cleaned)
-    
+        elif cleaned in spreads and result["spread"] is None:
+            result["spread"] = cleaned
+        else:
+            question_tokens.append(token)
+
+    result["question"] = " ".join(question_tokens).strip()
     return result

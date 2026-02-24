@@ -1,0 +1,37 @@
+{
+  "single": {
+    "description": "Single card pull",
+    "positions": ["The Card"]
+  },
+  "3-card": {
+    "description": "Past · Present · Future",
+    "positions": ["Past", "Present", "Future"]
+  },
+  "horseshoe": {
+    "description": "Seven-card horseshoe spread",
+    "positions": [
+      "Past",
+      "Present",
+      "Hidden influences",
+      "Obstacles",
+      "External influences",
+      "Hopes and fears",
+      "Outcome"
+    ]
+  },
+  "celtic-cross": {
+    "description": "Ten-card Celtic Cross spread",
+    "positions": [
+      "The situation",
+      "The crossing influence",
+      "The foundation",
+      "The recent past",
+      "The crown",
+      "The near future",
+      "Your attitude",
+      "External influences",
+      "Hopes and fears",
+      "The final outcome"
+    ]
+  }
+}
