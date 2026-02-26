@@ -24,6 +24,9 @@ class Paths:
     TAROT_DECK       = "jsons/data/full_tarot_deck.json"
     TAROT_SPREADS    = "jsons/data/tarot_spreads.json"
     FALLBACK_FLIRTS  = "jsons/data/fallback_flirts.json"
+    PROMPT_TEMPLATES = "jsons/data/Prompt_Templates.json"
+    COMMANDS         = "jsons/data/commands.json"
+    COMMAND_ACCESS   = "jsons/data/command_access.json"
 
     # ---- Calls / routing -----------------------------------------------
     CALLS_LOG        = "jsons/calls/calls.json"
@@ -33,6 +36,7 @@ class Paths:
     CHAT_LOG           = "jsons/logs/history/chat_log.json"
     FLIRT_HISTORY      = "jsons/logs/history/flirt_history.json"
     TAROT_HISTORY      = "jsons/logs/history/tarot_history.json"
+    COMMAND_HISTORY    = "jsons/logs/history/command_history.json"
     AUTONOMOUS_HISTORY = "jsons/logs/history/autonomous_history.json"
     USER_REGISTRY      = "jsons/logs/history/user_registry.json"
     USER_HISTORY_DIR   = "jsons/logs/history/users"
@@ -53,3 +57,4 @@ class Paths:
     # ---- Output --------------------------------------------------------
     FLIRT_OUTPUT     = "jsons/output/flirt_line.txt"
     TAROT_OUTPUT     = "jsons/output/tarot_reading.txt"
+    COMMAND_OUTPUT   = "jsons/output/command_response.txt"

@@ -13,3 +13,14 @@
 {"args": ["daemons\\flirt_daemon.py", "coffee", "interesting", "5"], "event": "flirt_daemon_started", "timestamp": 1771892709}
 {"args": ["daemons\\flirt_daemon.py", "coffee", "interesting", "5"], "event": "flirt_daemon_started", "timestamp": 1771892713}
 {"args": ["daemons\\flirt_daemon.py", "coffee", "interesting", "5\\"], "event": "flirt_daemon_started", "timestamp": 1771892866}
+{"args": ["daemons/commands_daemon.py", "!discord", "mordraga0"], "event": "commands_daemon_started", "timestamp": 1772088220}
+{"args": ["daemons/commands_daemon.py", "!discord", "mordraga0"], "event": "commands_daemon_started", "timestamp": 1772089211}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089231}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089397}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089417}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089439}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089469}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089501}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089539}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 11", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772090272}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 11", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772090341}

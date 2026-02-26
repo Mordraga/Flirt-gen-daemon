@@ -1,0 +1,8 @@
+{
+  "normal_users": [],
+  "vip_users": [],
+  "moderator_users": [],
+  "permission_denied_message": "@{username} - !{command} requires {min_level} access.",
+  "unknown_command_message": "@{username} - I do not have !{command} configured yet.",
+  "invalid_input_message": "@{username} - use a command like !social, !discord, or !about."
+}

@@ -1,8 +1,18 @@
 {
   "flirt": {
-    "file": "daemons/flirt_daemon.py"
+    "file": "daemons/flirt_daemon.py",
+    "prompt_template": "flirt"
   },
   "tarot": {
-    "file": "daemons/tarot_daemon.py"
+    "file": "daemons/tarot_daemon.py",
+    "prompt_template": "tarot"
+  },
+  "commands": {
+    "file": "daemons/commands_daemon.py",
+    "prompt_template": "commands"
+  },
+  "command": {
+    "file": "daemons/commands_daemon.py",
+    "prompt_template": "commands"
   }
 }

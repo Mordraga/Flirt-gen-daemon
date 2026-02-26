@@ -17,7 +17,7 @@ from utils.helpers import (
 )
 from utils.paths import Paths
 from utils.rate_limiter import GlobalRateLimiter, UserCooldownTracker
-from engine import build_prompt, ask_openrouter
+from engine import build_prompt_from_keyword, ask_openrouter
 
 
 # Global instances
@@ -84,6 +84,7 @@ if __name__ == "__main__":
 
     _themes_data = load_json(Paths.THEMES, default={})
     _tones_data = load_json(Paths.TONES, default={})
+    _spice_data = load_json(Paths.SPICE, default={})
     theme = params.get("theme") or (random.choice(list(_themes_data.keys())) if _themes_data else "pagan")
     tone  = params.get("tone")  or (random.choice(list(_tones_data.keys()))  if _tones_data  else "sultry")
     level = params.get("spice") or 3
@@ -182,7 +183,26 @@ if __name__ == "__main__":
     try:
         print(f"Generating flirt for @{username}: theme={theme}, tone={tone}, spice={level}")
 
-        prompt = build_prompt(theme, tone, level)
+        theme_obj = _themes_data.get(theme, {})
+        tone_obj = _tones_data.get(tone, {})
+        spice_obj = _spice_data.get(str(level), {})
+
+        prompt_context = {
+            "theme": theme,
+            "tone": tone,
+            "level": level,
+            "theme_desc": theme_obj.get("description") or "No description available.",
+            "tone_desc": tone_obj.get("description") or "No description available.",
+            "spice_desc": spice_obj.get("description") or "No description available.",
+            "theme_anchors": theme_obj.get("anchors", []),
+            "tone_anchors": tone_obj.get("anchors", []),
+            "spice_anchors": spice_obj.get("anchors", []),
+        }
+
+        prompt = build_prompt_from_keyword("flirt", context=prompt_context)
+        if prompt.startswith("WARNING:"):
+            raise Exception(prompt)
+
         flirt_line = ask_openrouter(prompt, spicy=(level >= 7))
 
         # Check if OpenRouter returned an error

@@ -7,7 +7,7 @@ from pathlib import Path
 # Add parent directory to path so we can import engine and utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from engine import ask_openrouter
+from engine import ask_openrouter, build_prompt_from_keyword
 from utils.helpers import load_json, log_event, parse_all_params, write_to_file
 from utils.paths import Paths
 from utils.rate_limiter import GlobalRateLimiter, UserCooldownTracker
@@ -37,11 +37,11 @@ def safety_check(text: str) -> tuple[bool, str]:
 # =============================
 
 FALLBACK_READINGS = [
-    "The cards are feeling shy tonight... but the stars still shine for you! 🌙",
-    "The veil is thick today — but whatever's coming, your energy is ready for it. 🔮",
-    "Even the cards need a moment sometimes. Trust the path, darling. 💜",
-    "The mystical connection is buffering, but your fate isn't going anywhere! ✨",
-    "The cards whisper secrets even when I can't translate them. Trust yourself. 🌿",
+    "The cards are feeling shy tonight... but the stars still shine for you! \U0001F319",
+    "The veil is thick today \u2014 but whatever's coming, your energy is ready for it. \U0001F52E",
+    "Even the cards need a moment sometimes. Trust the path, darling. \U0001F49C",
+    "The mystical connection is buffering, but your fate isn't going anywhere! \u2728",
+    "The cards whisper secrets even when I can't translate them. Trust yourself. \U0001F33F",
 ]
 
 
@@ -60,33 +60,8 @@ def load_flat_deck(deck_path: str) -> list[dict]:
 
 
 def build_tarot_prompt(question: str, spread_name: str, positions: list[str], drawn: list[tuple[dict, str]]) -> str:
-    """Build the AI prompt for a tarot reading in Mai's voice.
-
-    Args:
-        question: The user's question (may be empty string).
-        spread_name: Human-readable spread description.
-        positions: List of position labels.
-        drawn: List of (card_dict, orientation) tuples — one per position.
-    """
-    lines = [
-        "You are Mai (MaidensAcquisitions.AI), a witchy, charismatic AI tarot reader for a Twitch stream.",
-        "",
-        "Rules:",
-        "- 4 to 6 sentences total",
-        "- Twitch-safe language only",
-        "- Speak in Mai's voice: warm, mysterious, playful, a little dramatic",
-        "- Reference the specific cards and their positions",
-        "- If a question was asked, frame the reading around it",
-        "- No asterisks, no markdown, plain text output only",
-        "",
-        f"Spread: {spread_name}",
-    ]
-
-    if question:
-        lines.append(f"User's question: {question}")
-
-    lines.append("")
-    lines.append("Cards drawn:")
+    """Build the AI prompt for a tarot reading using the engine template registry."""
+    card_lines: list[str] = []
     for position, (card, orientation) in zip(positions, drawn):
         kw_key = "upright" if orientation == "upright" else "reversed"
         keywords = card.get("keywords", {}).get(kw_key, [])
@@ -95,14 +70,16 @@ def build_tarot_prompt(question: str, spread_name: str, positions: list[str], dr
         if llm_summaries:
             summary = llm_summaries[0]
         keyword_str = ", ".join(keywords) if keywords else "no keywords"
-        lines.append(
-            f"  {position}: {card.get('name', 'Unknown')} ({orientation}) — {summary} | Keywords: {keyword_str}"
+        card_lines.append(
+            f"  {position}: {card.get('name', 'Unknown')} ({orientation}) - {summary} | Keywords: {keyword_str}"
         )
 
-    lines.append("")
-    lines.append("Deliver the tarot reading now. Output the reading only. No preamble, no explanation.")
-    return "\n".join(lines)
-
+    prompt_context = {
+        "spread_name": spread_name,
+        "question_line": f"User's question: {question}" if question else "",
+        "cards_block": "\n".join(card_lines),
+    }
+    return build_prompt_from_keyword("tarot", context=prompt_context)
 
 # =============================
 # GLOBAL INSTANCES
@@ -155,7 +132,7 @@ if __name__ == "__main__":
 
     deck = load_flat_deck(Paths.TAROT_DECK)
     if len(deck) < len(positions):
-        error_msg = "The tarot deck is empty — check full_tarot_deck.json! 🌙"
+        error_msg = "The tarot deck is empty \u2014 check full_tarot_deck.json! \U0001F319"
         print(error_msg)
         write_to_file(error_msg, Paths.TAROT_OUTPUT)
         sys.exit(1)
@@ -177,7 +154,7 @@ if __name__ == "__main__":
 
     can_request, remaining = user_tracker.check_cooldown(username, 300)
     if not can_request:
-        cooldown_msg = f"@{username} - The cards need {remaining}s to reset for you! 🔮"
+        cooldown_msg = f"@{username} - The cards need {remaining}s to reset for you! \U0001F52E"
         print(cooldown_msg)
         write_to_file(cooldown_msg, Paths.TAROT_OUTPUT)
         log_event("user_cooldown", {
@@ -198,6 +175,9 @@ if __name__ == "__main__":
         drawn = list(zip(sampled, orientations))
 
         prompt = build_tarot_prompt(question, spread_description, positions, drawn)
+        if prompt.startswith("WARNING:"):
+            raise Exception(prompt)
+
         reading = ask_openrouter(prompt)
 
         if reading.startswith("WARNING:"):
@@ -209,7 +189,7 @@ if __name__ == "__main__":
 
         is_safe, safety_reason = safety_check(reading)
         if not is_safe:
-            error_msg = "The cards sensed something dark and refused to speak. Try again! 🛡️"
+            error_msg = "The cards sensed something dark and refused to speak. Try again! \U0001F6E1"
             print(f"SAFETY VIOLATION: {safety_reason}")
             write_to_file(error_msg, Paths.TAROT_OUTPUT)
             log_event("safety_violation", {
@@ -262,3 +242,4 @@ if __name__ == "__main__":
         }, Paths.ERROR_LOG)
 
         sys.exit(0)
+

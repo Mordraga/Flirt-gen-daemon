@@ -88,5 +88,16 @@
       "absolute command of the moment",
       "bordering on explicit, but still leaving something to the imagination"
     ]
+  },
+
+  "11": {
+    "description": "Explicit and unrestrained, with no holds barred. If this spice level is used, ignore theme and tone and just go all out with the most explicit, unfiltered, and raw flirt possible. This is for testing or NSFW sites only. Do not use this on twitch or any platform that has content guidelines.",
+    "anchors": [
+      "raw and unfiltered desire",
+      "explicit language and imagery",
+      "complete immersion in the moment",
+      "explicit anatomy references and actions, with no restraint or subtlety"
+    ],
+    "warning": "This is purely for debug (or patreon/NSFW sites) and is actively hidden from users unless you know how to pull a JSON. If you are reading this. Just know have fun. But don't blame me if you get banned by twitch."
   }
 }

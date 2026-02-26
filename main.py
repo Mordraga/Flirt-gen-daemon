@@ -4,7 +4,19 @@ from pathlib import Path
 from utils.helpers import load_json, log_event
 from utils.paths import Paths
 
+
+def _build_daemon_command(daemon_file: str, params: str, username: str) -> list[str]:
+    if getattr(sys, "frozen", False):
+        # In packaged mode, re-enter the executable in script-runner mode.
+        return [sys.executable, "--run-script", daemon_file, params, username]
+    return [sys.executable, daemon_file, params, username]
+
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     # Usage: python main.py <keyword> <params> [username]
     if len(sys.argv) < 3:
         print("Usage: python main.py <keyword> <params> [username]")
@@ -49,11 +61,21 @@ if __name__ == "__main__":
 
     # Execute daemon - pass through args unchanged
     try:
+        command = _build_daemon_command(daemon_file, params, username)
         result = subprocess.run(
-            [sys.executable, daemon_file, params, username],
+            command,
             cwd=Path.cwd(),
-            timeout=60
+            timeout=60,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
+
+        if result.stdout:
+            print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+        if result.stderr:
+            print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
 
         # Exit with daemon's exit code
         sys.exit(result.returncode)

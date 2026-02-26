@@ -1,7 +1,7 @@
 {
   "Mai-config": {
     "backend": "openrouter",
-    "model": "mistralai/mistral-7b-instruct",
+    "model": "gryphe/mythomax-l2-13b",
     "max_tokens": 60,
     "temperature_normal": 0.85,
     "temperature_spicy": 0.95,
@@ -19,7 +19,7 @@
     "twitch_channel": "mordraga0",
     "owner_username": "mordraga0",
     "response_chance_percent": 10.0,
-    "global_cooldown_seconds": 10,
+    "global_cooldown_seconds": 300,
     "check_buffer_size": 2048,
     "ignored_bot_usernames": [
       "nightbot",

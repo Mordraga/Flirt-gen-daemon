@@ -87,6 +87,8 @@ class MaiControlPanel:
         # tarot fields
         self.qt_question_var = tk.StringVar()
         self.qt_spread_var = tk.StringVar(value="3-card")
+        # commands fields
+        self.qt_command_input_var = tk.StringVar(value="!social")
 
         self._apply_ui_style()
         self._build_ui()
@@ -163,6 +165,41 @@ class MaiControlPanel:
 
     def _save_editor_meta(self, payload: dict) -> None:
         atomic_write_json(self._editor_meta_path(), payload)
+
+    def _load_command_access(self) -> dict:
+        payload = load_json(Paths.COMMAND_ACCESS, default={})
+        if not isinstance(payload, dict):
+            payload = {}
+        payload.setdefault("normal_users", [])
+        payload.setdefault("vip_users", [])
+        payload.setdefault("moderator_users", [])
+        return payload
+
+    def _save_command_access(self, payload: dict) -> None:
+        atomic_write_json(Paths.COMMAND_ACCESS, payload)
+
+    def _load_command_access_list(self, key: str) -> list[str]:
+        payload = self._load_command_access()
+        values = payload.get(key, [])
+        if not isinstance(values, list):
+            return []
+        return [str(item).strip() for item in values if str(item).strip()]
+
+    def _save_command_access_list(self, key: str, items: list[str]) -> None:
+        payload = self._load_command_access()
+        seen: set[str] = set()
+        cleaned: list[str] = []
+        for item in items:
+            value = str(item).strip()
+            if not value:
+                continue
+            canon = value.lower()
+            if canon in seen:
+                continue
+            seen.add(canon)
+            cleaned.append(value)
+        payload[key] = cleaned
+        self._save_command_access(payload)
 
     def _show_drag_ghost(self, text: str, x_root: int, y_root: int):
         if self._drag_ghost is None or self._drag_ghost_label is None:
@@ -259,7 +296,7 @@ class MaiControlPanel:
         ttk.Label(qt_frame, text="Command").grid(row=0, column=0, sticky="w", padx=8, pady=6)
         cmd_cb = ttk.Combobox(
             qt_frame, textvariable=self.qt_keyword_var,
-            values=["flirt", "tarot"], state="readonly", width=12
+            values=["flirt", "tarot", "commands"], state="readonly", width=12
         )
         cmd_cb.grid(row=0, column=1, sticky="w", padx=8, pady=6)
         cmd_cb.bind("<<ComboboxSelected>>", self._on_qt_keyword_change)
@@ -328,11 +365,23 @@ class MaiControlPanel:
             state="readonly", width=14
         ).grid(row=0, column=3, sticky="w", padx=4, pady=4)
 
+    def _build_qt_commands_fields(self, parent: ttk.Frame):
+        for w in parent.winfo_children():
+            w.destroy()
+        ttk.Label(parent, text="Command Input").grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(parent, textvariable=self.qt_command_input_var, width=40).grid(
+            row=0, column=1, sticky="w", padx=4, pady=4
+        )
+        ttk.Label(parent, text="Example: !social").grid(row=0, column=2, sticky="w", padx=8, pady=4)
+
     def _on_qt_keyword_change(self, _event=None):
-        if self.qt_keyword_var.get() == "flirt":
+        keyword = self.qt_keyword_var.get()
+        if keyword == "flirt":
             self._build_qt_flirt_fields(self._qt_fields_frame)
-        else:
+        elif keyword == "tarot":
             self._build_qt_tarot_fields(self._qt_fields_frame)
+        else:
+            self._build_qt_commands_fields(self._qt_fields_frame)
 
     def _fire_quick_test(self):
         keyword  = self.qt_keyword_var.get()
@@ -346,12 +395,17 @@ class MaiControlPanel:
             if not raw_input.strip():
                 messagebox.showwarning("Quick Test", "Enter at least one flirt parameter.")
                 return
-        else:
+        elif keyword == "tarot":
             question  = self.qt_question_var.get().strip()
             spread    = self.qt_spread_var.get().strip()
             raw_input = " ".join(filter(None, [question, spread]))
             if not raw_input.strip():
                 messagebox.showwarning("Quick Test", "Enter a question or spread type.")
+                return
+        else:
+            raw_input = self.qt_command_input_var.get().strip()
+            if not raw_input.strip():
+                messagebox.showwarning("Quick Test", "Enter a command like !social.")
                 return
 
         command = self._build_python_script_command("main.py", [keyword, raw_input, username])
@@ -376,15 +430,57 @@ class MaiControlPanel:
         inner = ttk.Notebook(parent)
         inner.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-        cooldown_tab = ttk.Frame(inner)
-        fallback_tab = ttk.Frame(inner)
-        themes_tab   = ttk.Frame(inner)
-        tones_tab    = ttk.Frame(inner)
+        messages_tab = ttk.Frame(inner)
+        commands_tab = ttk.Frame(inner)
+        users_tab = ttk.Frame(inner)
+        data_tab = ttk.Frame(inner)
 
-        inner.add(cooldown_tab, text="Cooldown Messages")
-        inner.add(fallback_tab, text="Fallback Flirts")
-        inner.add(themes_tab,   text="Themes")
-        inner.add(tones_tab,    text="Tones")
+        inner.add(messages_tab, text="Messages")
+        inner.add(commands_tab, text="Commands")
+        inner.add(users_tab, text="Users")
+        inner.add(data_tab, text="Data")
+
+        # Messages sub-tabs
+        messages_inner = ttk.Notebook(messages_tab)
+        messages_inner.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        cooldown_tab = ttk.Frame(messages_inner)
+        fallback_tab = ttk.Frame(messages_inner)
+        command_messages_tab = ttk.Frame(messages_inner)
+        messages_inner.add(cooldown_tab, text="Cooldown")
+        messages_inner.add(fallback_tab, text="Fallback Flirts")
+        messages_inner.add(command_messages_tab, text="Command Fallbacks")
+
+        # Data sub-tabs
+        data_inner = ttk.Notebook(data_tab)
+        data_inner.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        themes_tab = ttk.Frame(data_inner)
+        tones_tab = ttk.Frame(data_inner)
+        data_inner.add(themes_tab, text="Themes")
+        data_inner.add(tones_tab, text="Tones")
+
+        # Users sub-tabs
+        users_note = ttk.LabelFrame(
+            users_tab,
+            text="Tier Resolution",
+        )
+        users_note.pack(fill=tk.X, padx=12, pady=(12, 6))
+        ttk.Label(
+            users_note,
+            text=(
+                "Broadcaster is automatic from config monitor.twitch_channel.\n"
+                "Define only Normal, VIP, and Moderator users here."
+            ),
+            justify=tk.LEFT,
+        ).pack(anchor="w", padx=10, pady=8)
+
+        users_inner = ttk.Notebook(users_tab)
+        users_inner.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        normal_users_tab = ttk.Frame(users_inner)
+        vip_users_tab = ttk.Frame(users_inner)
+        moderator_users_tab = ttk.Frame(users_inner)
+        users_inner.add(normal_users_tab, text="Normal")
+        users_inner.add(vip_users_tab, text="VIP")
+        users_inner.add(moderator_users_tab, text="Moderators")
 
         self._build_list_editor(
             cooldown_tab,
@@ -435,6 +531,100 @@ class MaiControlPanel:
             list_fields={"tags"},
             grouped_tree=True,
         )
+        self._build_kv_editor(
+            commands_tab,
+            path=Paths.COMMANDS,
+            fields=[
+                ("Key", "key"),
+                ("Minimum Tier", "min_level"),
+                ("Description", "description"),
+                ("Context", "context"),
+                ("Usage", "usage"),
+                ("Response Data", "response_data"),
+            ],
+            anchors_field="aliases",
+            anchors_label="Aliases",
+            group_field="min_level",
+            group_label="Minimum Tier",
+            grouped_tree=True,
+        )
+        self._build_list_editor(
+            normal_users_tab,
+            load_fn=lambda: self._load_command_access_list("normal_users"),
+            save_fn=lambda items: self._save_command_access_list("normal_users", items),
+            hint="Users listed here are explicitly marked normal. Users not in VIP/Moderator default to normal anyway.",
+            source_path=f"{Paths.COMMAND_ACCESS}#normal_users",
+            item_label="Username",
+        )
+        self._build_list_editor(
+            vip_users_tab,
+            load_fn=lambda: self._load_command_access_list("vip_users"),
+            save_fn=lambda items: self._save_command_access_list("vip_users", items),
+            hint="Any username listed here receives VIP command permissions.",
+            source_path=f"{Paths.COMMAND_ACCESS}#vip_users",
+            item_label="Username",
+        )
+        self._build_list_editor(
+            moderator_users_tab,
+            load_fn=lambda: self._load_command_access_list("moderator_users"),
+            save_fn=lambda items: self._save_command_access_list("moderator_users", items),
+            hint="Any username listed here receives Moderator command permissions.",
+            source_path=f"{Paths.COMMAND_ACCESS}#moderator_users",
+            item_label="Username",
+        )
+
+        messages_frame = ttk.LabelFrame(command_messages_tab, text="Command Fallback Messages")
+        messages_frame.pack(fill=tk.X, padx=12, pady=12)
+        messages_frame.columnconfigure(1, weight=1)
+
+        defaults = {
+            "permission_denied_message": "@{username} - !{command} requires {min_level} access.",
+            "unknown_command_message": "@{username} - I do not have !{command} configured yet.",
+            "invalid_input_message": "@{username} - use a command like !social, !discord, or !about.",
+        }
+
+        message_vars = {
+            "permission_denied_message": tk.StringVar(value=""),
+            "unknown_command_message": tk.StringVar(value=""),
+            "invalid_input_message": tk.StringVar(value=""),
+        }
+
+        labels = [
+            ("Permission denied", "permission_denied_message"),
+            ("Unknown command", "unknown_command_message"),
+            ("Invalid input", "invalid_input_message"),
+        ]
+        for row_i, (label, key) in enumerate(labels):
+            ttk.Label(messages_frame, text=label).grid(row=row_i, column=0, sticky="w", padx=8, pady=6)
+            ttk.Entry(messages_frame, textvariable=message_vars[key], width=96).grid(
+                row=row_i, column=1, sticky="we", padx=8, pady=6
+            )
+
+        ttk.Label(
+            messages_frame,
+            text="Available placeholders: {username}, {command}, {min_level}, {user_level}",
+            foreground="gray",
+        ).grid(row=len(labels), column=0, columnspan=2, sticky="w", padx=8, pady=(4, 8))
+
+        def _load_command_messages():
+            payload = self._load_command_access()
+            for key, default_value in defaults.items():
+                message_vars[key].set(str(payload.get(key, default_value)))
+
+        def _save_command_messages():
+            payload = self._load_command_access()
+            for key, default_value in defaults.items():
+                payload[key] = message_vars[key].get().strip() or default_value
+            self._save_command_access(payload)
+            self.log_queue.put("[data editor] saved command fallback messages")
+            messagebox.showinfo("Saved", "Command messages saved.", parent=self.root)
+
+        actions = ttk.Frame(command_messages_tab)
+        actions.pack(anchor="w", padx=12, pady=(0, 12))
+        ttk.Button(actions, text="Reload", command=_load_command_messages).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(actions, text="Save", command=_save_command_messages).pack(side=tk.LEFT)
+
+        _load_command_messages()
 
     def _build_list_editor(
         self,
@@ -947,6 +1137,7 @@ class MaiControlPanel:
         path: str,
         fields: list,
         anchors_field: str,
+        anchors_label: str = "Anchors",
         group_field: str | None = None,
         group_label: str = "Folder",
         tags_field: str | None = None,
@@ -1054,7 +1245,7 @@ class MaiControlPanel:
             field_vars[field_key] = var
 
         anchor_row = len(fields)
-        ttk.Label(form_frame, text="Anchors\n(one per line)").grid(
+        ttk.Label(form_frame, text=f"{anchors_label}\n(one per line)").grid(
             row=anchor_row, column=0, sticky="nw", padx=8, pady=4
         )
         anchors_text = tk.Text(form_frame, width=56, height=10, wrap=tk.WORD)

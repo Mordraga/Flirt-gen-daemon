@@ -1,4 +1,8 @@
 import requests
+import json
+from collections.abc import Mapping
+from typing import Any
+
 from utils.helpers import load_json, load_config, load_keys, log_event
 from utils.paths import Paths
 
@@ -6,51 +10,80 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 # =============================
-# Prompt Builder
+# Prompt Templates
 # =============================
 
-def build_prompt(theme: str, tone: str, level: int) -> str:
-    theme_data = load_json(Paths.THEMES, default={})
-    tone_data = load_json(Paths.TONES, default={})
-    spice_data = load_json(Paths.SPICE, default={})
+class _TemplateSafeDict(dict):
+    def __missing__(self, key: str) -> str:
+        return ""
 
-    theme_obj = theme_data.get(theme, {})
-    tone_obj = tone_data.get(tone, {})
-    spice_obj = spice_data.get(str(level), {})
 
-    theme_desc = theme_obj.get("description") or "No description available."
-    theme_anchors = theme_obj.get("anchors", [])
+def _normalize_context_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(item) for item in value)
+    return str(value)
 
-    tone_desc = tone_obj.get("description") or "No description available."
-    tone_anchors = tone_obj.get("anchors", [])
 
-    spice_desc = spice_obj.get("description") or "No description available."
-    spice_anchors = spice_obj.get("anchors", [])
+def _normalize_context(context: Mapping[str, Any] | None) -> dict[str, str]:
+    if not context:
+        return {}
+    return {
+        str(key): _normalize_context_value(value)
+        for key, value in context.items()
+    }
 
-    return f"""
-You are MaidensAcquisistions.AI, or Mai for short.
-You generate sharp, punchy flirt lines for a Twitch chat.
 
-Rules:
-- Maximum 15-20 words total
-- One complete sentence only (no em-dashes, no multiple clauses)
-- Capture the vibe and atmosphere of the theme naturally
-- Natural Language Only
-- Ensure proper grammar and spelling
-- Twitch-safe language only
-- Deliver the punchline fast
+def _resolve_template_key(keyword: str, registry: Mapping[str, Any]) -> str:
+    route = registry.get(keyword, {})
+    if isinstance(route, Mapping):
+        return str(route.get("prompt_template") or route.get("template") or keyword)
+    return keyword
 
-Theme:{theme} - {theme_desc}
-Tone:{tone} - {tone_desc}
-Spice Level:{level} - {spice_desc}
 
-Use the following anchors as inspiration, but do not force them in. Be creative and natural.
-Theme Anchors: {', '.join(theme_anchors)}
-Tone Anchors: {', '.join(tone_anchors)}
-Spice Anchors: {', '.join(spice_anchors)}
+def get_prompt_template(
+    keyword: str,
+    registry: Mapping[str, Any] | None = None,
+    templates: Mapping[str, Any] | None = None,
+) -> str | None:
+    keyword = (keyword or "").strip().lower()
+    if not keyword:
+        return None
 
-Output the flirt line only. No preamble, no explanation.
-""".strip()
+    registry_data = registry if registry is not None else load_json(Paths.REGISTRY, default={})
+    template_data = templates if templates is not None else load_json(Paths.PROMPT_TEMPLATES, default={})
+
+    template_key = _resolve_template_key(keyword, registry_data)
+    template_entry = template_data.get(template_key) or template_data.get(keyword)
+
+    if isinstance(template_entry, Mapping):
+        template_text = template_entry.get("prompt") or template_entry.get("template")
+        if template_text:
+            return str(template_text)
+        return None
+
+    if isinstance(template_entry, str):
+        return template_entry
+
+    return None
+
+
+def build_prompt_from_keyword(
+    keyword: str,
+    context: Mapping[str, Any] | None = None,
+    registry: Mapping[str, Any] | None = None,
+    templates: Mapping[str, Any] | None = None,
+) -> str:
+    template = get_prompt_template(keyword, registry=registry, templates=templates)
+    if not template:
+        return (
+            f"WARNING: Missing prompt template for keyword '{keyword}' "
+            f"in {Paths.PROMPT_TEMPLATES}"
+        )
+
+    normalized_context = _normalize_context(context)
+    return template.format_map(_TemplateSafeDict(normalized_context)).strip()
 
 
 # =============================
@@ -89,7 +122,31 @@ def ask_openrouter(prompt: str, spicy: bool = False) -> str:
 
     try:
         r = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=timeout)
-        r.raise_for_status()
+        if not r.ok:
+            detail = r.text[:500]
+            try:
+                data = r.json()
+                err = data.get("error", {}) if isinstance(data, dict) else {}
+                msg = str(err.get("message") or "").strip()
+                metadata = err.get("metadata", {}) if isinstance(err, dict) else {}
+                raw_payload = metadata.get("raw") if isinstance(metadata, dict) else None
+
+                provider_msg = ""
+                if isinstance(raw_payload, str) and raw_payload.strip():
+                    try:
+                        raw_data = json.loads(raw_payload)
+                        provider_msg = str(raw_data.get("error", {}).get("message") or "").strip()
+                    except Exception:
+                        provider_msg = ""
+
+                bits = [part for part in [msg, provider_msg] if part]
+                if bits:
+                    detail = " | ".join(bits)
+            except ValueError:
+                pass
+
+            raise requests.HTTPError(f"{r.status_code} {r.reason}: {detail}", response=r)
+
         data = r.json()
         return data["choices"][0]["message"]["content"].strip()
 
