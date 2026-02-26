@@ -14,12 +14,12 @@ from typing import Any, Iterable, Mapping
 # Filesystem + data helpers
 # ============================
 
-def _candidate_app_roots() -> list[Path]:
+def _candidate_app_roots(include_meipass: bool = True) -> list[Path]:
     roots: list[Path] = []
 
     if getattr(sys, "frozen", False):
         meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
+        if include_meipass and meipass:
             roots.append(Path(meipass))
 
         exe_dir = Path(sys.executable).resolve().parent
@@ -47,7 +47,7 @@ def resolve_existing_path(file_path: str | Path) -> Path:
     if path.exists():
         return path
 
-    for root in _candidate_app_roots():
+    for root in _candidate_app_roots(include_meipass=True):
         candidate = root / path
         if candidate.exists():
             return candidate
@@ -55,8 +55,28 @@ def resolve_existing_path(file_path: str | Path) -> Path:
     return path
 
 
-def ensure_parent_dir(file_path: str | Path) -> Path:
+def resolve_write_path(file_path: str | Path) -> Path:
     path = Path(file_path)
+    if path.is_absolute():
+        return path
+
+    existing = resolve_existing_path(path)
+    if existing.exists():
+        return existing
+
+    write_roots = _candidate_app_roots(include_meipass=False)
+    for root in write_roots:
+        candidate = root / path
+        if candidate.parent.exists():
+            return candidate
+
+    if write_roots:
+        return write_roots[0] / path
+    return path
+
+
+def ensure_parent_dir(file_path: str | Path) -> Path:
+    path = resolve_write_path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 

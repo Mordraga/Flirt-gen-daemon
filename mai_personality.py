@@ -31,6 +31,48 @@ def _p(key: str, default=None):
     return _load_personality().get(key, default)
 
 
+def _owner_profile() -> dict[str, str]:
+    config = load_json(Paths.CONFIG, default={})
+    if not isinstance(config, dict):
+        return {}
+    profile = config.get("owner_profile", {})
+    if not isinstance(profile, dict):
+        return {}
+
+    def _clean(field: str) -> str:
+        return str(profile.get(field, "")).strip()
+
+    return {
+        "username": _clean("username"),
+        "name": _clean("name"),
+        "pronouns": _clean("pronouns"),
+        "role_identity": _clean("role_identity"),
+        "context_lore": _clean("context_lore"),
+    }
+
+
+def _owner_profile_instruction(owner_username: str) -> str:
+    profile = _owner_profile()
+    if not any(profile.values()):
+        return ""
+
+    username = profile.get("username") or owner_username
+    name = profile.get("name") or "unknown"
+    pronouns = profile.get("pronouns") or "unknown"
+    role_identity = profile.get("role_identity") or "unknown"
+    context_lore = profile.get("context_lore") or "none provided"
+
+    return (
+        "Owner profile details:\n"
+        f"- Username: {username}\n"
+        f"- Name: {name}\n"
+        f"- Pronouns: {pronouns}\n"
+        f"- Role/Identity: {role_identity}\n"
+        f"- Context/Lore: {context_lore}\n"
+        "Use this profile naturally when relevant."
+    )
+
+
 # Stable constant kept in Python so mai_monitor.py can import it directly.
 # Falls back to the JSON value if accessed via personality().
 WITCH_USERNAME: str = "mordraga0"
@@ -169,12 +211,16 @@ def mordraga_chat(
 ) -> str:
     """Owner-specific response path with stronger familiar-bond behavior."""
     owner_guidance: str = _p("owner_guidance", "Be extra loyal and affectionate, without being submissive.")
+    owner_profile_instruction = _owner_profile_instruction(owner_username)
+    combined_guidance = f"This user is {owner_username}, your witch. {owner_guidance}"
+    if owner_profile_instruction:
+        combined_guidance = f"{combined_guidance}\n\n{owner_profile_instruction}"
     return _generate_with_prompt(
         username=username,
         message=message,
         llm_backend=llm_backend,
         recent_messages=recent_messages,
-        extra_guidance=f"This user is {owner_username}, your witch. {owner_guidance}",
+        extra_guidance=combined_guidance,
     )
 
 

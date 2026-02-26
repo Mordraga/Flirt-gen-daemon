@@ -19,6 +19,7 @@ class Paths:
     COOLDOWN_MSGS    = "jsons/data/cooldown_msg.json"
     COOLDOWN_HISTORY = "jsons/data/cooldown_history.json"
     USER_COOLDOWNS   = "jsons/data/user_cooldowns.json"
+    GLOBAL_RATE_LIMIT_STATE = "jsons/data/global_rate_limit.json"
     REDACTION        = "jsons/data/redaction.json"
     PERSONALITY      = "jsons/data/personality.json"
     TAROT_DECK       = "jsons/data/full_tarot_deck.json"

@@ -93,10 +93,21 @@ if __name__ == "__main__":
     # FREE EVENT CONFIGURATION
     # =============================
 
-    # Primary source: config.json["event"]; fallback: standalone event_config.json
+    # Primary source: config.json["event"] (or legacy "Event"); fallback: standalone event_config.json
     _main_config = load_json(Paths.CONFIG, default={})
-    event_config = _main_config.get("event") or load_json(Paths.EVENT_CONFIG, default={})
+    event_config = (
+        _main_config.get("event")
+        or _main_config.get("Event")
+        or load_json(Paths.EVENT_CONFIG, default={})
+    )
+    if not isinstance(event_config, dict):
+        event_config = {}
     is_free_event = event_config.get("free_event_active", False)
+    max_calls_per_minute = event_config.get("free_event_global_limit_per_minute", 30) if is_free_event else 30
+    try:
+        global_limiter.max_calls = max(1, int(max_calls_per_minute))
+    except (TypeError, ValueError):
+        global_limiter.max_calls = 30
 
     if is_free_event:
         max_spice = event_config.get("free_event_max_spice", 5)

@@ -24,3 +24,10 @@
 {"args": ["daemons/flirt_daemon.py", "Coffee spicy 10", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772089539}
 {"args": ["daemons/flirt_daemon.py", "Coffee spicy 11", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772090272}
 {"args": ["daemons/flirt_daemon.py", "Coffee spicy 11", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772090341}
+{"args": ["daemons/tarot_daemon.py", "will i win 3-card", "testuser"], "event": "tarot_daemon_started", "timestamp": 1772090613}
+{"args": ["daemons/commands_daemon.py", "!social", "testuser"], "event": "commands_daemon_started", "timestamp": 1772090613}
+{"args": ["daemons/flirt_daemon.py", "pagan sultry 5", "testuser"], "event": "flirt_daemon_started", "timestamp": 1772090614}
+{"args": ["daemons/flirt_daemon.py", "Coffee spicy 11", "mordraga0"], "event": "flirt_daemon_started", "timestamp": 1772090739}
+{"args": ["C:\\Users\\Allison\\Github\\Flirt-gen-daemon\\daemons\\commands_daemon.py", "!social", "testuser"], "event": "commands_daemon_started", "timestamp": 1772091164}
+{"args": ["C:\\Users\\Allison\\Github\\Flirt-gen-daemon\\daemons\\flirt_daemon.py", "pagan sultry 5", "CaseUser"], "event": "flirt_daemon_started", "timestamp": 1772091174}
+{"args": ["C:\\Users\\Allison\\Github\\Flirt-gen-daemon\\daemons\\flirt_daemon.py", "pagan sultry 5", "caseuser"], "event": "flirt_daemon_started", "timestamp": 1772091183}

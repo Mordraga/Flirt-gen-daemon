@@ -1,7 +1,7 @@
 import sys
 import subprocess
 from pathlib import Path
-from utils.helpers import load_json, log_event
+from utils.helpers import load_json, log_event, resolve_existing_path
 from utils.paths import Paths
 
 
@@ -41,9 +41,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     daemon_file = route.get("file")
+    daemon_path = resolve_existing_path(daemon_file) if daemon_file else Path("")
 
     # Missing/invalid daemon file
-    if not daemon_file or not Path(daemon_file).exists():
+    if not daemon_file or not daemon_path.exists():
         print(f"ERROR: Daemon file not found: {daemon_file}")
         log_event("missing_daemon_file", {
             "keyword": keyword,
@@ -54,17 +55,17 @@ if __name__ == "__main__":
     # Log the routing
     log_event("route_called", {
         "keyword": keyword,
-        "daemon": daemon_file,
+        "daemon": str(daemon_path),
         "params": params,
         "username": username
     }, Paths.ROUTING_LOG)
 
     # Execute daemon - pass through args unchanged
     try:
-        command = _build_daemon_command(daemon_file, params, username)
+        command = _build_daemon_command(str(daemon_path), params, username)
         result = subprocess.run(
             command,
-            cwd=Path.cwd(),
+            cwd=Path(__file__).resolve().parent,
             timeout=60,
             capture_output=True,
             text=True,
@@ -84,7 +85,7 @@ if __name__ == "__main__":
         print(f"ERROR: Daemon timeout after 60 seconds")
         log_event("daemon_timeout", {
             "keyword": keyword,
-            "daemon": daemon_file
+            "daemon": str(daemon_path)
         }, Paths.ROUTING_ERRORS)
         sys.exit(1)
 
@@ -92,7 +93,7 @@ if __name__ == "__main__":
         print(f"ERROR: {e}")
         log_event("daemon_execution_error", {
             "keyword": keyword,
-            "daemon": daemon_file,
+            "daemon": str(daemon_path),
             "error": str(e)
         }, Paths.ROUTING_ERRORS)
         sys.exit(1)
