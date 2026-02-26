@@ -8,7 +8,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from engine import ask_openrouter, build_prompt_from_keyword
+from utils.cooldown_messages import choose_tool_cooldown_template, format_cooldown_template
 from utils.helpers import load_json, log_event, parse_all_params, write_to_file
+from utils.mood_engine import resolve_effective_mood
 from utils.paths import Paths
 from utils.rate_limiter import GlobalRateLimiter, UserCooldownTracker
 
@@ -59,7 +61,13 @@ def load_flat_deck(deck_path: str) -> list[dict]:
     return cards
 
 
-def build_tarot_prompt(question: str, spread_name: str, positions: list[str], drawn: list[tuple[dict, str]]) -> str:
+def build_tarot_prompt(
+    question: str,
+    spread_name: str,
+    positions: list[str],
+    drawn: list[tuple[dict, str]],
+    mood_context: dict | None = None,
+) -> str:
     """Build the AI prompt for a tarot reading using the engine template registry."""
     card_lines: list[str] = []
     for position, (card, orientation) in zip(positions, drawn):
@@ -78,6 +86,8 @@ def build_tarot_prompt(question: str, spread_name: str, positions: list[str], dr
         "spread_name": spread_name,
         "question_line": f"User's question: {question}" if question else "",
         "cards_block": "\n".join(card_lines),
+        "mood_name": str((mood_context or {}).get("name", "neutral")).strip() or "neutral",
+        "mood_guidance": str((mood_context or {}).get("guidance", "")).strip(),
     }
     return build_prompt_from_keyword("tarot", context=prompt_context)
 
@@ -154,7 +164,8 @@ if __name__ == "__main__":
 
     can_request, remaining = user_tracker.check_cooldown(username, 300)
     if not can_request:
-        cooldown_msg = f"@{username} - The cards need {remaining}s to reset for you! \U0001F52E"
+        template = choose_tool_cooldown_template("tarot")
+        cooldown_msg = f"@{username} - " + format_cooldown_template(template, remaining)
         print(cooldown_msg)
         write_to_file(cooldown_msg, Paths.TAROT_OUTPUT)
         log_event("user_cooldown", {
@@ -173,8 +184,9 @@ if __name__ == "__main__":
         sampled = random.sample(deck, len(positions))
         orientations = [random.choice(["upright", "reversed"]) for _ in positions]
         drawn = list(zip(sampled, orientations))
+        mood_context = resolve_effective_mood("tarot", require_active_session=True)
 
-        prompt = build_tarot_prompt(question, spread_description, positions, drawn)
+        prompt = build_tarot_prompt(question, spread_description, positions, drawn, mood_context=mood_context)
         if prompt.startswith("WARNING:"):
             raise Exception(prompt)
 

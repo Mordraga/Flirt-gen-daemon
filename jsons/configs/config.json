@@ -32,6 +32,8 @@
     "ignore_command_messages": true,
     "config_reload_seconds": 2.0,
     "registry_flush_seconds": 30,
+    "mood_reroll_enabled": true,
+    "mood_reroll_seconds": 1200,
     "irc_server": "irc.chat.twitch.tv",
     "irc_port": 6667
   },

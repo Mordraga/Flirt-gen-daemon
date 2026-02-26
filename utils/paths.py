@@ -28,6 +28,8 @@ class Paths:
     PROMPT_TEMPLATES = "jsons/data/Prompt_Templates.json"
     COMMANDS         = "jsons/data/commands.json"
     COMMAND_ACCESS   = "jsons/data/command_access.json"
+    MOODS            = "jsons/data/moods.json"
+    MOOD_STATE       = "jsons/data/session_mood.json"
 
     # ---- Calls / routing -----------------------------------------------
     CALLS_LOG        = "jsons/calls/calls.json"

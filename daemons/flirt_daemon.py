@@ -13,8 +13,9 @@ from utils.helpers import (
     log_event,
     parse_all_params,
     write_to_file,
-    atomic_write_json,
 )
+from utils.cooldown_messages import choose_tool_cooldown_template, format_cooldown_template
+from utils.mood_engine import resolve_effective_mood
 from utils.paths import Paths
 from utils.rate_limiter import GlobalRateLimiter, UserCooldownTracker
 from engine import build_prompt_from_keyword, ask_openrouter
@@ -142,41 +143,8 @@ if __name__ == "__main__":
     can_request, remaining = user_tracker.check_cooldown(username, cooldown_seconds)
 
     if not can_request:
-        cooldown_data = load_json(Paths.COOLDOWN_MSGS, default={})
-        cooldown_set = cooldown_data.get("cooldown_messages", [
-            "Give me {remaining}s to recharge for you! 💜"
-        ])
-
-        # Load history to avoid repeats
-        history_file = Path(Paths.COOLDOWN_HISTORY)
-        if history_file.exists():
-            history = load_json(history_file, default={})
-            last_used = history.get("last_used", [])
-        else:
-            last_used = []
-
-        # Filter out last 3 used messages
-        available = [msg for msg in cooldown_set if msg not in last_used]
-
-        # If exhausted all options, reset history
-        if not available:
-            available = cooldown_set
-            last_used = []
-
-        # Pick random from available
-        template = random.choice(available)
-
-        # Update history (keep last 3)
-        last_used.append(template)
-        if len(last_used) > 3:
-            last_used.pop(0)
-
-        # Save history
-        atomic_write_json(history_file, {"last_used": last_used})
-
-        # Format with username and remaining time
-        cooldown_msg = f"@{username} - " + template.format(remaining=remaining)
-
+        template = choose_tool_cooldown_template("flirt")
+        cooldown_msg = f"@{username} - " + format_cooldown_template(template, remaining)
         print(cooldown_msg)
         write_to_file(cooldown_msg, Paths.FLIRT_OUTPUT)
         log_event("user_cooldown", {
@@ -197,6 +165,7 @@ if __name__ == "__main__":
         theme_obj = _themes_data.get(theme, {})
         tone_obj = _tones_data.get(tone, {})
         spice_obj = _spice_data.get(str(level), {})
+        mood_context = resolve_effective_mood("flirt", require_active_session=True)
 
         prompt_context = {
             "theme": theme,
@@ -208,6 +177,8 @@ if __name__ == "__main__":
             "theme_anchors": theme_obj.get("anchors", []),
             "tone_anchors": tone_obj.get("anchors", []),
             "spice_anchors": spice_obj.get("anchors", []),
+            "mood_name": mood_context.get("name", "neutral"),
+            "mood_guidance": mood_context.get("guidance", ""),
         }
 
         prompt = build_prompt_from_keyword("flirt", context=prompt_context)

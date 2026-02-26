@@ -25,6 +25,8 @@ DEFAULT_MONITOR_CONFIG: dict = {
     "owner_username": WITCH_USERNAME,
     "config_reload_seconds": 2.0,
     "registry_flush_seconds": 30,
+    "mood_reroll_enabled": True,
+    "mood_reroll_seconds": 1200,
 }
 
 
@@ -49,6 +51,8 @@ class LiveMonitorConfig:
         self.owner_username = DEFAULT_MONITOR_CONFIG["owner_username"]
         self.config_reload_seconds = DEFAULT_MONITOR_CONFIG["config_reload_seconds"]
         self.registry_flush_seconds = DEFAULT_MONITOR_CONFIG["registry_flush_seconds"]
+        self.mood_reroll_enabled = DEFAULT_MONITOR_CONFIG["mood_reroll_enabled"]
+        self.mood_reroll_seconds = DEFAULT_MONITOR_CONFIG["mood_reroll_seconds"]
 
         self.reload(force=True)
 
@@ -163,6 +167,16 @@ class LiveMonitorConfig:
         )
         self.registry_flush_seconds = max(5, flush_seconds)
 
+        self.mood_reroll_enabled = self._as_bool(
+            monitor_config.get("mood_reroll_enabled", self.mood_reroll_enabled),
+            DEFAULT_MONITOR_CONFIG["mood_reroll_enabled"],
+        )
+        mood_reroll_seconds = self._as_int(
+            monitor_config.get("mood_reroll_seconds", self.mood_reroll_seconds),
+            DEFAULT_MONITOR_CONFIG["mood_reroll_seconds"],
+        )
+        self.mood_reroll_seconds = max(30, mood_reroll_seconds)
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -194,7 +208,8 @@ class LiveMonitorConfig:
             self._last_mtime = mtime
             print(
                 f"[Mai Monitor] Config reloaded | chance={self.response_chance_percent}% "
-                f"cooldown={self.global_cooldown_seconds}s owner={self.owner_username}"
+                f"cooldown={self.global_cooldown_seconds}s owner={self.owner_username} "
+                f"mood_reroll={'on' if self.mood_reroll_enabled else 'off'}({self.mood_reroll_seconds}s)"
             )
             return True
 

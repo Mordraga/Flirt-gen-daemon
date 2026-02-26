@@ -1,0 +1,10 @@
+{
+  "session_id": "",
+  "active": false,
+  "active_mood": "neutral",
+  "locked_mood": "",
+  "selected_by": "fallback",
+  "selected_at": 0.0,
+  "next_reroll_at": 0.0,
+  "last_heartbeat_at": 0.0
+}

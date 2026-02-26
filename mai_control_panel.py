@@ -2,11 +2,13 @@
 import json
 import re
 import shutil
+import os
 import runpy
 import shlex
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import tkinter.font as tkfont
 from datetime import datetime
@@ -14,7 +16,17 @@ from pathlib import Path
 from tkinter import colorchooser, messagebox, simpledialog, ttk
 
 from chat_analytics import analyze_activity, find_highlights, load_chat_log
+from utils.cooldown_messages import load_tool_cooldown_map, save_tool_cooldown_map
 from utils.helpers import atomic_write_json, load_json, resolve_existing_path
+from utils.mood_engine import (
+    load_moods,
+    load_moods_from_payload,
+    lock_mood,
+    manual_reroll,
+    read_mood_state,
+    set_session_inactive,
+    unlock_mood,
+)
 from utils.paths import Paths
 
 try:
@@ -121,8 +133,10 @@ class MaiControlPanel:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Mai Control Panel")
+        self.window_min_width = 980
+        self.window_min_height = 680
         self.root.geometry("1100x780")
-        self.root.minsize(980, 680)
+        self.root.minsize(self.window_min_width, self.window_min_height)
 
         self.log_queue: queue.Queue[str] = queue.Queue()
         self.processes: dict[str, subprocess.Popen] = {}
@@ -132,12 +146,19 @@ class MaiControlPanel:
 
         self.config_path = REPO_ROOT / "jsons" / "configs" / "config.json"
         self.ui_settings_path = REPO_ROOT / "jsons" / "configs" / "ui_settings.json"
+        self.ui_profiles_path = REPO_ROOT / "jsons" / "configs" / "ui_profiles.json"
         self.ui_state_path = REPO_ROOT / "jsons" / "configs" / "ui_state.json"
         self._themed_text_widgets: list[tk.Text] = []
+        self._tab_scroll_canvases: list[tk.Canvas] = []
         self.ui_settings = self._load_ui_settings()
+        self.ui_profiles = self._load_ui_profiles(self.ui_settings)
+        active_profile = str(self.ui_profiles.get("active_profile", "default"))
+        self.ui_settings = dict(self.ui_profiles.get("profiles", {}).get(active_profile, self.ui_settings))
         self.ui_state = self._load_ui_state()
         self.theme_palette = self._get_theme_palette()
         self.main_notebook: ttk.Notebook | None = None
+        self._main_tab_containers: dict[str, ttk.Frame] = {}
+        self._main_tab_content_frames: dict[str, ttk.Frame] = {}
         self._main_tab_ids: list[str] = []
         self._main_tab_keys: list[str] = []
         self._main_tab_labels: dict[str, str] = {}
@@ -155,9 +176,17 @@ class MaiControlPanel:
         self.monitor_vars: dict[str, tk.Variable] = {}
         self.event_vars: dict[str, tk.Variable] = {}
         self.monitor_last_changed_var = tk.StringVar(value="Last changed by UI: unknown")
+        self.monitor_mood_name_var = tk.StringVar(value="neutral")
+        self.monitor_mood_source_var = tk.StringVar(value="fallback")
+        self.monitor_mood_next_var = tk.StringVar(value="n/a")
+        self.monitor_mood_lock_var = tk.StringVar(value="")
+        self.monitor_mood_status_var = tk.StringVar(value="Mood: neutral")
+        self.monitor_mood_combo: ttk.Combobox | None = None
+        self.monitor_mood_reroll_button: ttk.Button | None = None
         self.owner_last_changed_var = tk.StringVar(value="Last changed by UI: unknown")
         self.glance_last_refresh_var = tk.StringVar(value="Never")
         self.glance_last_route_var = tk.StringVar(value="No routed calls yet.")
+        self.glance_mood_var = tk.StringVar(value="Current mood: neutral")
         self.glance_output_stamp_vars: dict[str, tk.StringVar] = {}
         self.glance_output_widgets: dict[str, tk.Text] = {}
         self.glance_status_text_vars: dict[str, tk.StringVar] = {}
@@ -168,10 +197,18 @@ class MaiControlPanel:
         self.settings_colorblind_mode_var: tk.StringVar | None = None
         self.settings_font_scale_var: tk.StringVar | None = None
         self.settings_density_var: tk.StringVar | None = None
+        self.settings_ui_profile_var: tk.StringVar | None = None
+        self.settings_profile_combo: ttk.Combobox | None = None
         self.settings_chip_color_vars: dict[str, tk.StringVar] = {}
         self.settings_severity_color_vars: dict[str, tk.StringVar] = {}
         self.settings_snapshot_listbox: tk.Listbox | None = None
         self.settings_snapshot_name_to_path: dict[str, Path] = {}
+        self.settings_full_backup_listbox: tk.Listbox | None = None
+        self.settings_full_backup_name_to_path: dict[str, Path] = {}
+        self.settings_backup_root_var = tk.StringVar(value="")
+        self.settings_section_var: tk.StringVar | None = None
+        self.settings_section_backup_listbox: tk.Listbox | None = None
+        self.settings_section_backup_name_to_path: dict[str, Path] = {}
         self.analytics_total_var = tk.StringVar(value="-")
         self.analytics_unique_var = tk.StringVar(value="-")
         self.analytics_first_var = tk.StringVar(value="-")
@@ -299,12 +336,61 @@ class MaiControlPanel:
     def _save_ui_settings(self) -> None:
         atomic_write_json(self.ui_settings_path, self.ui_settings)
 
+    def _default_ui_profiles(self) -> dict:
+        return {
+            "active_profile": "default",
+            "profiles": {
+                "default": self._default_ui_settings(),
+            },
+        }
+
+    def _merge_ui_profiles(self, payload: dict | None) -> dict:
+        default_payload = self._default_ui_profiles()
+        if not isinstance(payload, dict):
+            return default_payload
+
+        incoming_profiles = payload.get("profiles", {})
+        merged_profiles: dict[str, dict] = {}
+        if isinstance(incoming_profiles, dict):
+            for raw_name, raw_profile in incoming_profiles.items():
+                name = str(raw_name or "").strip()
+                if not name:
+                    continue
+                merged_profiles[name] = self._merge_ui_settings(raw_profile if isinstance(raw_profile, dict) else {})
+
+        if not merged_profiles:
+            merged_profiles = dict(default_payload["profiles"])
+
+        active_profile = str(payload.get("active_profile", "")).strip()
+        if active_profile not in merged_profiles:
+            active_profile = next(iter(merged_profiles.keys()))
+
+        return {
+            "active_profile": active_profile,
+            "profiles": merged_profiles,
+        }
+
+    def _load_ui_profiles(self, legacy_settings: dict | None = None) -> dict:
+        payload = load_json(self.ui_profiles_path, default={})
+        merged = self._merge_ui_profiles(payload)
+
+        # One-time migration: seed the default profile from legacy ui_settings.json.
+        if not isinstance(payload, dict) or "profiles" not in payload:
+            merged["profiles"]["default"] = self._merge_ui_settings(legacy_settings if isinstance(legacy_settings, dict) else {})
+            merged["active_profile"] = "default"
+            atomic_write_json(self.ui_profiles_path, merged)
+        return merged
+
+    def _save_ui_profiles(self) -> None:
+        atomic_write_json(self.ui_profiles_path, self.ui_profiles)
+
     @staticmethod
     def _default_ui_state() -> dict:
         return {
             "window_geometry": "",
             "active_tab_key": "glance",
             "collapsed_sections": {},
+            "tree_open_state": {},
             "filters": {
                 "analytics_log_path": Paths.CHAT_LOG,
                 "analytics_username": "",
@@ -332,6 +418,15 @@ class MaiControlPanel:
         collapsed = payload.get("collapsed_sections", {})
         if isinstance(collapsed, dict):
             state["collapsed_sections"] = {str(k): bool(v) for k, v in collapsed.items()}
+
+        tree_open_state = payload.get("tree_open_state", {})
+        if isinstance(tree_open_state, dict):
+            normalized: dict[str, dict[str, bool]] = {}
+            for scope_key, raw_map in tree_open_state.items():
+                if not isinstance(raw_map, dict):
+                    continue
+                normalized[str(scope_key)] = {str(group): bool(is_open) for group, is_open in raw_map.items()}
+            state["tree_open_state"] = normalized
 
         filters = payload.get("filters", {})
         if isinstance(filters, dict):
@@ -460,6 +555,111 @@ class MaiControlPanel:
                 )
             except Exception:
                 continue
+        for canvas in list(self._tab_scroll_canvases):
+            try:
+                canvas.configure(background=self.theme_palette["surface"])
+            except Exception:
+                continue
+
+    def _create_scrollable_tab_container(self, notebook: ttk.Notebook) -> tuple[ttk.Frame, ttk.Frame]:
+        outer = ttk.Frame(notebook)
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(0, weight=1)
+
+        canvas = tk.Canvas(
+            outer,
+            highlightthickness=0,
+            borderwidth=0,
+            background=self.theme_palette["surface"],
+        )
+        self._tab_scroll_canvases.append(canvas)
+        scrollbar = ttk.Scrollbar(outer, orient=tk.VERTICAL, command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        content = ttk.Frame(canvas)
+        content.columnconfigure(0, weight=1)
+        window_id = canvas.create_window((0, 0), window=content, anchor="nw")
+
+        def _on_content_configure(_event=None):
+            try:
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+
+        def _on_canvas_configure(event):
+            try:
+                canvas.itemconfigure(window_id, width=event.width)
+            except Exception:
+                pass
+
+        def _on_mouse_wheel(event):
+            try:
+                if event.delta != 0:
+                    canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                return "break"
+            except Exception:
+                return None
+
+        def _on_button4(_event):
+            try:
+                canvas.yview_scroll(-3, "units")
+            except Exception:
+                pass
+            return "break"
+
+        def _on_button5(_event):
+            try:
+                canvas.yview_scroll(3, "units")
+            except Exception:
+                pass
+            return "break"
+
+        content.bind("<Configure>", _on_content_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+        for widget in (canvas, content):
+            widget.bind("<MouseWheel>", _on_mouse_wheel, add="+")
+            widget.bind("<Button-4>", _on_button4, add="+")
+            widget.bind("<Button-5>", _on_button5, add="+")
+        return outer, content
+
+    def _fit_window_to_active_tab(self) -> None:
+        if self.main_notebook is None:
+            return
+        try:
+            if self.root.state() in {"zoomed", "iconic"}:
+                return
+        except Exception:
+            pass
+
+        try:
+            idx = int(self.main_notebook.index("current"))
+        except Exception:
+            return
+        if idx < 0 or idx >= len(self._main_tab_keys):
+            return
+        key = self._main_tab_keys[idx]
+        outer = self._main_tab_containers.get(key)
+        content = self._main_tab_content_frames.get(key)
+        if outer is None or content is None:
+            return
+
+        try:
+            self.root.update_idletasks()
+            chrome_w = max(0, self.root.winfo_width() - outer.winfo_width())
+            chrome_h = max(0, self.root.winfo_height() - outer.winfo_height())
+            desired_w = int(content.winfo_reqwidth() + chrome_w + 24)
+            desired_h = int(content.winfo_reqheight() + chrome_h + 24)
+            max_w = max(self.window_min_width, self.root.winfo_screenwidth() - 80)
+            max_h = max(self.window_min_height, self.root.winfo_screenheight() - 80)
+            target_w = min(max(desired_w, self.window_min_width), max_w)
+            target_h = min(max(desired_h, self.window_min_height), max_h)
+            x = self.root.winfo_x()
+            y = self.root.winfo_y()
+            self.root.geometry(f"{target_w}x{target_h}+{x}+{y}")
+        except Exception:
+            return
 
     def _apply_ui_style(self):
         self.theme_palette = self._get_theme_palette()
@@ -539,25 +739,41 @@ class MaiControlPanel:
         notebook.pack(fill=tk.BOTH, expand=True)
         self.main_notebook = notebook
 
-        glance_tab = ttk.Frame(notebook)
-        monitor_tab = ttk.Frame(notebook)
-        scripts_tab = ttk.Frame(notebook)
-        analytics_tab = ttk.Frame(notebook)
-        data_tab    = ttk.Frame(notebook)
-        settings_tab = ttk.Frame(notebook)
+        glance_outer, glance_tab = self._create_scrollable_tab_container(notebook)
+        monitor_outer, monitor_tab = self._create_scrollable_tab_container(notebook)
+        scripts_outer, scripts_tab = self._create_scrollable_tab_container(notebook)
+        analytics_outer, analytics_tab = self._create_scrollable_tab_container(notebook)
+        data_outer, data_tab = self._create_scrollable_tab_container(notebook)
+        settings_outer, settings_tab = self._create_scrollable_tab_container(notebook)
 
         tabs = [
-            ("glance", "At a Glance", glance_tab),
-            ("monitor", "Monitor", monitor_tab),
-            ("scripts", "Scripts", scripts_tab),
-            ("analytics", "Chat Analytics", analytics_tab),
-            ("data", "Data Editor", data_tab),
-            ("settings", "Settings", settings_tab),
+            ("glance", "At a Glance", glance_outer),
+            ("monitor", "Monitor", monitor_outer),
+            ("scripts", "Scripts", scripts_outer),
+            ("analytics", "Chat Analytics", analytics_outer),
+            ("data", "Data Editor", data_outer),
+            ("settings", "Settings", settings_outer),
         ]
         for key, label, frame in tabs:
             notebook.add(frame, text=label)
             self._main_tab_keys.append(key)
             self._main_tab_labels[key] = label
+        self._main_tab_containers = {
+            "glance": glance_outer,
+            "monitor": monitor_outer,
+            "scripts": scripts_outer,
+            "analytics": analytics_outer,
+            "data": data_outer,
+            "settings": settings_outer,
+        }
+        self._main_tab_content_frames = {
+            "glance": glance_tab,
+            "monitor": monitor_tab,
+            "scripts": scripts_tab,
+            "analytics": analytics_tab,
+            "data": data_tab,
+            "settings": settings_tab,
+        }
 
         self._build_glance_tab(glance_tab)
         self._build_monitor_tab(monitor_tab)
@@ -578,6 +794,7 @@ class MaiControlPanel:
 
         self._restore_ui_state()
         self._refresh_tab_dirty_indicators()
+        self.root.after(120, self._fit_window_to_active_tab)
 
     def _show_help_drawer(self):
         messagebox.showinfo(
@@ -588,7 +805,7 @@ class MaiControlPanel:
             "- Scripts: quick command tests + runtime logs.\n"
             "- Chat Analytics: activity, highlights, filterable chat log.\n"
             "- Data Editor: tones/themes/commands/users/owner profile.\n"
-            "- Settings: dark mode, color profiles, chip colors, snapshots.",
+            "- Settings: dark mode, color profiles, chip colors, backups/profiles.",
             parent=self.root,
         )
         self.ui_state["onboarding_seen"] = True
@@ -641,11 +858,13 @@ class MaiControlPanel:
                 self.main_notebook.select(self._previous_tab_index)
                 self._suspend_tab_change_guard = False
                 return
+            self._mark_dirty(previous_key, False)
 
         self._previous_tab_index = current_idx
         if current_idx < len(self._main_tab_keys):
             self.ui_state["active_tab_key"] = self._main_tab_keys[current_idx]
             self._save_ui_state()
+        self.root.after_idle(self._fit_window_to_active_tab)
 
     def _bind_global_shortcuts(self):
         self.root.bind_all("<Control-s>", self._on_shortcut_save, add="+")
@@ -769,6 +988,8 @@ class MaiControlPanel:
         title: str,
         expanded: bool = True,
         state_key: str | None = None,
+        fill: str = tk.X,
+        expand: bool = False,
     ) -> tuple[ttk.LabelFrame, ttk.Frame]:
         expanded_state = expanded
         if state_key:
@@ -777,7 +998,7 @@ class MaiControlPanel:
                 expanded_state = stored
 
         section = ttk.LabelFrame(parent, text=title)
-        section.pack(fill=tk.X, padx=12, pady=8)
+        section.pack(fill=fill, expand=expand, padx=12, pady=8)
         section.columnconfigure(0, weight=1)
 
         header = ttk.Frame(section)
@@ -801,6 +1022,7 @@ class MaiControlPanel:
                 if state_key:
                     self.ui_state.setdefault("collapsed_sections", {})[state_key] = True
                     self._save_ui_state()
+            self.root.after_idle(self._fit_window_to_active_tab)
 
         ttk.Button(header, textvariable=toggle_text, width=10, command=_toggle).grid(
             row=0, column=1, sticky="e", pady=2
@@ -867,6 +1089,13 @@ class MaiControlPanel:
                 errors.append("Registry flush interval must be >= 5.")
         except Exception:
             errors.append("Registry flush interval must be an integer.")
+
+        try:
+            mood_reroll = int(self.monitor_vars["mood_reroll_seconds"].get().strip())
+            if mood_reroll < 30:
+                errors.append("Mood reroll interval must be >= 30.")
+        except Exception:
+            errors.append("Mood reroll interval must be an integer.")
 
         try:
             port = int(self.monitor_vars["irc_port"].get().strip())
@@ -949,11 +1178,129 @@ class MaiControlPanel:
         self._refresh_owner_meta_label()
         self._mark_dirty("data", False)
 
+    def _load_mood_names(self) -> list[str]:
+        moods_payload = load_moods(Paths.MOODS)
+        moods_map = moods_payload.get("moods", {})
+        if not isinstance(moods_map, dict):
+            return ["neutral"]
+        names = sorted([str(name).strip().lower() for name in moods_map.keys() if str(name).strip()], key=str.lower)
+        return names or ["neutral"]
+
+    def _get_monitor_mood_reroll_settings(self) -> tuple[bool, int]:
+        enabled_var = self.monitor_vars.get("mood_reroll_enabled")
+        enabled = bool(enabled_var.get()) if isinstance(enabled_var, tk.BooleanVar) else True
+
+        seconds = 1200
+        seconds_var = self.monitor_vars.get("mood_reroll_seconds")
+        if isinstance(seconds_var, tk.StringVar):
+            try:
+                seconds = int(seconds_var.get().strip() or 1200)
+            except Exception:
+                seconds = 1200
+        return enabled, max(30, int(seconds))
+
+    def _has_active_monitor_mood_session(self, state: dict | None = None) -> bool:
+        current = state if isinstance(state, dict) else read_mood_state(Paths.MOOD_STATE)
+        if not bool(current.get("active", False)):
+            return False
+        heartbeat_raw = current.get("last_heartbeat_at", 0.0)
+        try:
+            heartbeat = float(heartbeat_raw)
+        except Exception:
+            return False
+        if heartbeat <= 0:
+            return False
+        return (time.time() - heartbeat) <= 30.0
+
+    def _refresh_monitor_mood_state(self) -> None:
+        state = read_mood_state(Paths.MOOD_STATE)
+        mood_name = str(state.get("active_mood", "neutral")).strip() or "neutral"
+        selected_by = str(state.get("selected_by", "fallback")).strip() or "fallback"
+        session_active = self._has_active_monitor_mood_session(state)
+        self.monitor_mood_name_var.set(mood_name)
+        self.monitor_mood_source_var.set(selected_by)
+        self.monitor_mood_status_var.set(f"Mood: {mood_name}")
+
+        locked = str(state.get("locked_mood", "")).strip()
+        if locked:
+            self.monitor_mood_next_var.set("locked")
+            self.monitor_mood_lock_var.set(locked)
+            if self.monitor_mood_reroll_button is not None:
+                self.monitor_mood_reroll_button.configure(state=tk.DISABLED)
+        else:
+            next_reroll = state.get("next_reroll_at", 0.0)
+            if isinstance(next_reroll, (int, float)) and float(next_reroll) > 0:
+                self.monitor_mood_next_var.set(self._format_glance_timestamp(float(next_reroll)))
+            else:
+                self.monitor_mood_next_var.set("n/a")
+            if not self.monitor_mood_lock_var.get().strip():
+                self.monitor_mood_lock_var.set(mood_name)
+            if self.monitor_mood_reroll_button is not None:
+                self.monitor_mood_reroll_button.configure(state=tk.NORMAL if session_active else tk.DISABLED)
+
+        mood_names = self._load_mood_names()
+        if self.monitor_mood_combo is not None:
+            self.monitor_mood_combo["values"] = mood_names
+            current = self.monitor_mood_lock_var.get().strip().lower()
+            if current not in mood_names:
+                self.monitor_mood_lock_var.set(mood_names[0] if mood_names else "neutral")
+
+    def _lock_selected_monitor_mood(self) -> None:
+        mood_name = self.monitor_mood_lock_var.get().strip().lower()
+        if not mood_name:
+            messagebox.showwarning("Mood", "Select a mood to lock.", parent=self.root)
+            return
+
+        state = read_mood_state(Paths.MOOD_STATE)
+        if not self._has_active_monitor_mood_session(state):
+            messagebox.showinfo("Mood", "Start the monitor before locking the session mood.", parent=self.root)
+            return
+        lock_mood(state, mood_name, path=Paths.MOOD_STATE)
+        self.log_queue.put(f"[mood] locked to '{mood_name}'")
+        self._set_status(f"Mood locked: {mood_name}", "ok")
+        self._refresh_monitor_mood_state()
+        self._refresh_glance()
+
+    def _unlock_monitor_mood(self) -> None:
+        state = read_mood_state(Paths.MOOD_STATE)
+        if not self._has_active_monitor_mood_session(state):
+            messagebox.showinfo("Mood", "No active monitor mood session to unlock.", parent=self.root)
+            return
+        reroll_enabled, reroll_seconds = self._get_monitor_mood_reroll_settings()
+        unlock_mood(
+            state,
+            reroll_enabled=reroll_enabled,
+            reroll_seconds=reroll_seconds,
+            path=Paths.MOOD_STATE,
+        )
+        self.log_queue.put("[mood] unlocked")
+        self._set_status("Mood unlocked.", "ok")
+        self._refresh_monitor_mood_state()
+        self._refresh_glance()
+
+    def _reroll_monitor_mood(self) -> None:
+        state = read_mood_state(Paths.MOOD_STATE)
+        if not self._has_active_monitor_mood_session(state):
+            messagebox.showinfo("Mood", "Start the monitor before rerolling mood.", parent=self.root)
+            return
+        if str(state.get("locked_mood", "")).strip():
+            messagebox.showinfo("Mood", "Mood is locked. Unlock before rerolling.", parent=self.root)
+            return
+        _enabled, reroll_seconds = self._get_monitor_mood_reroll_settings()
+        manual_reroll(state, reroll_seconds=reroll_seconds, path=Paths.MOOD_STATE)
+        updated = read_mood_state(Paths.MOOD_STATE)
+        mood_name = str(updated.get("active_mood", "neutral")).strip() or "neutral"
+        self.log_queue.put(f"[mood] rerolled -> {mood_name}")
+        self._set_status(f"Mood rerolled: {mood_name}", "ok")
+        self._refresh_monitor_mood_state()
+        self._refresh_glance()
+
     # ---- Monitor tab -------------------------------------------------------
 
     def _build_monitor_tab(self, parent: ttk.Frame):
         controls = ttk.LabelFrame(parent, text="Mai Monitor")
         controls.pack(fill=tk.X, padx=12, pady=12)
+        controls.columnconfigure(6, weight=1)
 
         ttk.Label(controls, text="Status:").grid(row=0, column=0, sticky="w", padx=8, pady=8)
         ttk.Label(controls, textvariable=self.monitor_status_var).grid(row=0, column=1, sticky="w", padx=8, pady=8)
@@ -961,6 +1308,31 @@ class MaiControlPanel:
         ttk.Button(controls, text="Start Monitor", command=self.start_monitor).grid(row=0, column=2, padx=8, pady=8)
         ttk.Button(controls, text="Stop Monitor",  command=self.stop_monitor).grid(row=0, column=3, padx=8, pady=8)
         ttk.Button(controls, text="Reload Config", command=self._load_monitor_config_into_form).grid(row=0, column=4, padx=8, pady=8)
+
+        ttk.Label(controls, text="Current mood:").grid(row=1, column=0, sticky="w", padx=8, pady=(0, 6))
+        ttk.Label(controls, textvariable=self.monitor_mood_name_var).grid(row=1, column=1, sticky="w", padx=8, pady=(0, 6))
+        ttk.Label(controls, text="Selected by:").grid(row=1, column=2, sticky="w", padx=8, pady=(0, 6))
+        ttk.Label(controls, textvariable=self.monitor_mood_source_var).grid(row=1, column=3, sticky="w", padx=8, pady=(0, 6))
+        ttk.Label(controls, text="Next reroll:").grid(row=1, column=4, sticky="w", padx=8, pady=(0, 6))
+        ttk.Label(controls, textvariable=self.monitor_mood_next_var).grid(row=1, column=5, sticky="w", padx=8, pady=(0, 6))
+
+        ttk.Label(controls, text="Lock to mood").grid(row=2, column=0, sticky="w", padx=8, pady=(0, 8))
+        self.monitor_mood_combo = ttk.Combobox(
+            controls,
+            textvariable=self.monitor_mood_lock_var,
+            values=self._load_mood_names(),
+            state="readonly",
+            width=20,
+        )
+        self.monitor_mood_combo.grid(row=2, column=1, sticky="w", padx=8, pady=(0, 8))
+        ttk.Button(controls, text="Lock Selected", command=self._lock_selected_monitor_mood).grid(
+            row=2, column=2, padx=8, pady=(0, 8)
+        )
+        ttk.Button(controls, text="Unlock", command=self._unlock_monitor_mood).grid(
+            row=2, column=3, padx=8, pady=(0, 8)
+        )
+        self.monitor_mood_reroll_button = ttk.Button(controls, text="Reroll Now", command=self._reroll_monitor_mood)
+        self.monitor_mood_reroll_button.grid(row=2, column=4, padx=8, pady=(0, 8))
 
         _form_section, form = self._build_collapsible_section(
             parent,
@@ -978,12 +1350,14 @@ class MaiControlPanel:
             ("ignored_bot_usernames",    "Ignored bots (comma separated)",   "str"),
             ("config_reload_seconds",    "Config reload interval (s)",       "float"),
             ("registry_flush_seconds",   "Registry flush interval (s)",      "int"),
+            ("mood_reroll_seconds",      "Mood reroll interval (s)",         "int"),
             ("irc_server",               "IRC server",                       "str"),
             ("irc_port",                 "IRC port",                         "int"),
         ]
         bool_fields = [
             ("respond_to_owner_always",  "Always respond to owner"),
             ("ignore_command_messages",  "Ignore command messages (!foo)"),
+            ("mood_reroll_enabled",      "Enable mood auto-reroll"),
         ]
 
         for i, (key, label, _) in enumerate(fields):
@@ -1448,6 +1822,9 @@ class MaiControlPanel:
         ttk.Label(system, textvariable=self.glance_last_route_var).grid(
             row=1, column=3, columnspan=2, sticky="w", padx=8, pady=(0, 8)
         )
+        ttk.Label(system, textvariable=self.glance_mood_var).grid(
+            row=2, column=0, columnspan=5, sticky="w", padx=8, pady=(0, 8)
+        )
 
         cues = ttk.LabelFrame(container, text="Health Cues")
         cues.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 8))
@@ -1531,6 +1908,14 @@ class MaiControlPanel:
         else:
             self.glance_last_route_var.set("No routed calls yet.")
             self._set_glance_cue("routing", "no activity yet", "warn")
+
+        mood_state = read_mood_state(Paths.MOOD_STATE)
+        mood_name = str(mood_state.get("active_mood", "neutral")).strip() or "neutral"
+        mood_source = str(mood_state.get("selected_by", "fallback")).strip() or "fallback"
+        locked_mood = str(mood_state.get("locked_mood", "")).strip()
+        mood_suffix = " (locked)" if locked_mood else ""
+        self.glance_mood_var.set(f"Current mood: {mood_name}{mood_suffix} [{mood_source}]")
+        self._refresh_monitor_mood_state()
 
         for key, file_path in self.glance_output_paths.items():
             preview = self._read_text_preview(file_path)
@@ -1624,6 +2009,144 @@ class MaiControlPanel:
             if var is not None:
                 var.set(color)
 
+    @staticmethod
+    def _is_valid_profile_name(value: str) -> bool:
+        return bool(re.fullmatch(r"[A-Za-z0-9 _.\-]{1,40}", value or ""))
+
+    def _refresh_settings_profile_controls(self) -> None:
+        if self.settings_ui_profile_var is None or self.settings_profile_combo is None:
+            return
+        profiles = self.ui_profiles.get("profiles", {}) if isinstance(self.ui_profiles, dict) else {}
+        names = sorted([str(name) for name in profiles.keys() if str(name).strip()], key=str.lower)
+        if not names:
+            names = ["default"]
+            self.ui_profiles = self._default_ui_profiles()
+            self._save_ui_profiles()
+        current = str(self.settings_ui_profile_var.get() or self.ui_profiles.get("active_profile", names[0])).strip()
+        if current not in names:
+            current = str(self.ui_profiles.get("active_profile", names[0]))
+        if current not in names:
+            current = names[0]
+        self.settings_profile_combo["values"] = names
+        self.settings_ui_profile_var.set(current)
+        self.ui_profiles["active_profile"] = current
+
+    def _load_ui_profile_into_controls(self, profile_name: str, persist_active: bool = True) -> None:
+        profiles = self.ui_profiles.get("profiles", {}) if isinstance(self.ui_profiles, dict) else {}
+        selected = profiles.get(profile_name)
+        if not isinstance(selected, dict):
+            self._set_status(f"UI profile not found: {profile_name}", "warn")
+            return
+        if persist_active:
+            self.ui_profiles["active_profile"] = profile_name
+        self.ui_settings = self._merge_ui_settings(selected)
+        self._sync_settings_controls_from_ui_settings()
+        self._apply_ui_style()
+        self._refresh_glance()
+        self._mark_dirty("settings", False)
+        if persist_active:
+            self.ui_profiles.setdefault("profiles", {})[profile_name] = dict(self.ui_settings)
+            self._save_ui_profiles()
+            self._save_ui_settings()
+            self._refresh_settings_profile_controls()
+        self._set_status(f"Loaded UI profile '{profile_name}'.", "ok")
+
+    def _on_settings_profile_selected(self, _event=None) -> None:
+        if self.settings_ui_profile_var is None:
+            return
+        selected = str(self.settings_ui_profile_var.get() or "").strip()
+        if not selected:
+            return
+        self._load_ui_profile_into_controls(selected, persist_active=True)
+
+    def _save_as_new_ui_profile(self) -> None:
+        initial = ""
+        if self.settings_ui_profile_var is not None:
+            initial = str(self.settings_ui_profile_var.get() or "").strip()
+        requested = simpledialog.askstring(
+            "Save UI Profile",
+            "Profile name (letters/numbers/space/._-):",
+            initialvalue=initial,
+            parent=self.root,
+        )
+        if requested is None:
+            return
+        name = str(requested).strip()
+        if not self._is_valid_profile_name(name):
+            messagebox.showwarning("Profile", "Use 1-40 chars: letters, numbers, space, dot, dash, underscore.", parent=self.root)
+            return
+        profiles = self.ui_profiles.setdefault("profiles", {})
+        if name in profiles:
+            if not messagebox.askyesno("Profile Exists", f"Overwrite existing profile '{name}'?", parent=self.root):
+                return
+        self.ui_settings = self._collect_ui_settings_from_controls()
+        profiles[name] = dict(self.ui_settings)
+        self.ui_profiles["active_profile"] = name
+        self._save_ui_profiles()
+        self._save_ui_settings()
+        self._refresh_settings_profile_controls()
+        self._mark_dirty("settings", False)
+        self._set_status(f"Saved UI profile '{name}'.", "ok")
+
+    def _rename_selected_ui_profile(self) -> None:
+        if self.settings_ui_profile_var is None:
+            return
+        old_name = str(self.settings_ui_profile_var.get() or "").strip()
+        if not old_name:
+            messagebox.showwarning("Profile", "Select a profile first.", parent=self.root)
+            return
+        profiles = self.ui_profiles.get("profiles", {}) if isinstance(self.ui_profiles, dict) else {}
+        if old_name not in profiles:
+            messagebox.showwarning("Profile", f"Profile not found: {old_name}", parent=self.root)
+            return
+        requested = simpledialog.askstring(
+            "Rename UI Profile",
+            "New profile name:",
+            initialvalue=old_name,
+            parent=self.root,
+        )
+        if requested is None:
+            return
+        new_name = str(requested).strip()
+        if new_name == old_name:
+            return
+        if not self._is_valid_profile_name(new_name):
+            messagebox.showwarning("Profile", "Use 1-40 chars: letters, numbers, space, dot, dash, underscore.", parent=self.root)
+            return
+        if new_name in profiles:
+            messagebox.showwarning("Profile", f"A profile named '{new_name}' already exists.", parent=self.root)
+            return
+        profiles[new_name] = profiles.pop(old_name)
+        if str(self.ui_profiles.get("active_profile", "")) == old_name:
+            self.ui_profiles["active_profile"] = new_name
+        self._save_ui_profiles()
+        self._refresh_settings_profile_controls()
+        self._set_status(f"Renamed profile '{old_name}' to '{new_name}'.", "ok")
+
+    def _delete_selected_ui_profile(self) -> None:
+        if self.settings_ui_profile_var is None:
+            return
+        target = str(self.settings_ui_profile_var.get() or "").strip()
+        if not target:
+            messagebox.showwarning("Profile", "Select a profile first.", parent=self.root)
+            return
+        profiles = self.ui_profiles.get("profiles", {}) if isinstance(self.ui_profiles, dict) else {}
+        if target not in profiles:
+            messagebox.showwarning("Profile", f"Profile not found: {target}", parent=self.root)
+            return
+        if len(profiles) <= 1:
+            messagebox.showwarning("Profile", "At least one UI profile must remain.", parent=self.root)
+            return
+        if not messagebox.askyesno("Delete Profile", f"Delete UI profile '{target}'?", parent=self.root):
+            return
+        profiles.pop(target, None)
+        next_name = sorted(profiles.keys(), key=str.lower)[0]
+        self.ui_profiles["active_profile"] = next_name
+        self._save_ui_profiles()
+        self._refresh_settings_profile_controls()
+        self._load_ui_profile_into_controls(next_name, persist_active=True)
+        self._set_status(f"Deleted profile '{target}'.", "ok")
+
     def _collect_ui_settings_from_controls(self) -> dict:
         if (
             self.settings_dark_mode_var is None
@@ -1670,9 +2193,18 @@ class MaiControlPanel:
         self._apply_ui_style()
         self._refresh_glance()
         if save:
+            active_profile = str(self.ui_profiles.get("active_profile", "default")).strip() or "default"
+            if self.settings_ui_profile_var is not None:
+                selected = str(self.settings_ui_profile_var.get() or "").strip()
+                if selected:
+                    active_profile = selected
+            self.ui_profiles.setdefault("profiles", {})[active_profile] = dict(self.ui_settings)
+            self.ui_profiles["active_profile"] = active_profile
+            self._save_ui_profiles()
             self._save_ui_settings()
+            self._refresh_settings_profile_controls()
             self.log_queue.put("[settings] UI settings saved")
-            self._set_status("Settings saved.", "ok")
+            self._set_status(f"Settings saved to profile '{active_profile}'.", "ok")
             self._mark_dirty("settings", False)
             messagebox.showinfo("Settings", "Accessibility settings saved.", parent=self.root)
         else:
@@ -1680,6 +2212,8 @@ class MaiControlPanel:
             self._set_status("Settings applied.", "ok")
 
     def _sync_settings_controls_from_ui_settings(self) -> None:
+        if self.settings_ui_profile_var is not None:
+            self.settings_ui_profile_var.set(str(self.ui_profiles.get("active_profile", "default")))
         if self.settings_dark_mode_var is not None:
             self.settings_dark_mode_var.set(bool(self.ui_settings.get("dark_mode", False)))
         if self.settings_colorblind_mode_var is not None:
@@ -1700,7 +2234,7 @@ class MaiControlPanel:
         return REPO_ROOT / "jsons" / "configs" / "snapshots"
 
     def _snapshot_target_files(self) -> list[Path]:
-        return [self.config_path, self.ui_settings_path, self.ui_state_path]
+        return [self.config_path, self.ui_settings_path, self.ui_profiles_path, self.ui_state_path]
 
     def _list_config_snapshots(self) -> list[Path]:
         root = self._snapshot_root()
@@ -1771,8 +2305,11 @@ class MaiControlPanel:
                 src = snap_path / dst.name
                 if src.exists():
                     shutil.copy2(src, dst)
-            self.ui_settings = self._load_ui_settings()
+            self.ui_profiles = self._load_ui_profiles(self._load_ui_settings())
+            active_name = str(self.ui_profiles.get("active_profile", "default"))
+            self.ui_settings = dict(self.ui_profiles.get("profiles", {}).get(active_name, self._default_ui_settings()))
             self.ui_state = self._load_ui_state()
+            self._refresh_settings_profile_controls()
             self._sync_settings_controls_from_ui_settings()
             self._apply_ui_style()
             self._load_monitor_config_into_form()
@@ -1787,6 +2324,436 @@ class MaiControlPanel:
             self._set_status(f"Snapshot restore failed: {e}", "error")
             messagebox.showerror("Snapshot", f"Failed to restore snapshot: {e}", parent=self.root)
 
+    def _persistent_backup_base_root(self) -> Path:
+        candidates: list[Path] = []
+        local_appdata = str(os.getenv("LOCALAPPDATA") or "").strip()
+        appdata = str(os.getenv("APPDATA") or "").strip()
+        if local_appdata:
+            candidates.append(Path(local_appdata) / "MaiControlPanel" / "backups")
+        if appdata:
+            candidates.append(Path(appdata) / "MaiControlPanel" / "backups")
+        candidates.append(Path.home() / ".mai_control_panel" / "backups")
+        candidates.append(REPO_ROOT / "backups")
+
+        for root in candidates:
+            try:
+                root.mkdir(parents=True, exist_ok=True)
+                return root
+            except Exception:
+                continue
+        return REPO_ROOT / "backups"
+
+    def _update_backup_root_label(self) -> None:
+        base = self._persistent_backup_base_root()
+        self.settings_backup_root_var.set(str(base))
+
+    def _open_backup_folder(self) -> None:
+        root = self._persistent_backup_base_root()
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(str(root))  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(root)], cwd=REPO_ROOT)
+            else:
+                subprocess.Popen(["xdg-open", str(root)], cwd=REPO_ROOT)
+            self._set_status(f"Opened backup folder: {root}", "ok")
+        except Exception as e:
+            self._set_status(f"Could not open backup folder: {e}", "error")
+            messagebox.showerror("Backup Folder", f"Failed to open backup folder:\n{root}\n\n{e}", parent=self.root)
+
+    def _full_backup_root(self) -> Path:
+        return self._persistent_backup_base_root() / "full_data"
+
+    def _list_full_backups(self) -> list[Path]:
+        root = self._full_backup_root()
+        if not root.exists():
+            return []
+        candidates = [item for item in root.iterdir() if item.is_dir()]
+        return sorted(candidates, key=lambda item: item.name, reverse=True)
+
+    def _refresh_full_backup_list(self) -> None:
+        self._update_backup_root_label()
+        if self.settings_full_backup_listbox is None:
+            return
+        self.settings_full_backup_name_to_path.clear()
+        self.settings_full_backup_listbox.delete(0, tk.END)
+        for item in self._list_full_backups():
+            name = item.name
+            self.settings_full_backup_name_to_path[name] = item
+            self.settings_full_backup_listbox.insert(tk.END, name)
+
+    def _create_full_backup_folder(self, name_prefix: str = "all_data") -> Path:
+        root = self._full_backup_root()
+        root.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = root / f"{name_prefix}_{stamp}"
+        suffix = 1
+        while backup_dir.exists():
+            backup_dir = root / f"{name_prefix}_{stamp}_{suffix}"
+            suffix += 1
+        backup_dir.mkdir(parents=True, exist_ok=False)
+
+        source_jsons = REPO_ROOT / "jsons"
+        target_jsons = backup_dir / "jsons"
+        if source_jsons.exists():
+            shutil.copytree(source_jsons, target_jsons)
+        else:
+            target_jsons.mkdir(parents=True, exist_ok=True)
+        return backup_dir
+
+    def _create_full_data_backup(self) -> None:
+        try:
+            backup_dir = self._create_full_backup_folder(name_prefix="all_data")
+            self._refresh_full_backup_list()
+            self.log_queue.put(f"[settings] full data backup created: {backup_dir}")
+            self._set_status(f"Full data backup created: {backup_dir}", "ok")
+        except Exception as e:
+            self._set_status(f"Full data backup failed: {e}", "error")
+            messagebox.showerror("Backup", f"Failed to create full data backup: {e}", parent=self.root)
+
+    def _restore_selected_full_backup(self) -> None:
+        if self.settings_full_backup_listbox is None:
+            return
+        selection = self.settings_full_backup_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Backup", "Select a backup to restore.", parent=self.root)
+            return
+        name = str(self.settings_full_backup_listbox.get(selection[0]))
+        backup_path = self.settings_full_backup_name_to_path.get(name)
+        if backup_path is None or not backup_path.exists():
+            messagebox.showerror("Backup", f"Backup not found: {name}", parent=self.root)
+            self._refresh_full_backup_list()
+            return
+        source_jsons = backup_path / "jsons"
+        if not source_jsons.exists():
+            messagebox.showerror("Backup", f"Backup is missing jsons/: {name}", parent=self.root)
+            return
+        if not self._confirm_discard_unsaved("restoring a full data backup"):
+            return
+        if not messagebox.askyesno(
+            "Restore Full Data Backup",
+            f"Restore backup '{name}'?\nThis overwrites all files under jsons/.",
+            parent=self.root,
+        ):
+            return
+
+        try:
+            current_jsons = REPO_ROOT / "jsons"
+            self._create_full_backup_folder(name_prefix="pre_restore")
+            if current_jsons.exists():
+                shutil.rmtree(current_jsons)
+            shutil.copytree(source_jsons, current_jsons)
+
+            self.ui_profiles = self._load_ui_profiles(self._load_ui_settings())
+            active_name = str(self.ui_profiles.get("active_profile", "default"))
+            self.ui_settings = dict(self.ui_profiles.get("profiles", {}).get(active_name, self._default_ui_settings()))
+            self.ui_state = self._load_ui_state()
+            self._sync_settings_controls_from_ui_settings()
+            self._refresh_settings_profile_controls()
+            self._apply_ui_style()
+            self._load_monitor_config_into_form()
+            self._load_owner_profile_into_editor()
+            self._refresh_chat_analytics()
+            self._refresh_glance()
+            self._refresh_snapshot_list()
+            self._refresh_full_backup_list()
+            self._mark_dirty("settings", False)
+            self._mark_dirty("data", False)
+            self.log_queue.put(f"[settings] restored full data backup: {backup_path}")
+            self._set_status(f"Restored full data backup: {name}", "ok")
+        except Exception as e:
+            self._set_status(f"Full data restore failed: {e}", "error")
+            messagebox.showerror("Backup", f"Failed to restore full data backup: {e}", parent=self.root)
+
+    def _rename_selected_full_backup(self) -> None:
+        if self.settings_full_backup_listbox is None:
+            return
+        selection = self.settings_full_backup_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Backup", "Select a backup first.", parent=self.root)
+            return
+        old_name = str(self.settings_full_backup_listbox.get(selection[0]))
+        backup_path = self.settings_full_backup_name_to_path.get(old_name)
+        if backup_path is None or not backup_path.exists():
+            self._refresh_full_backup_list()
+            messagebox.showerror("Backup", f"Backup not found: {old_name}", parent=self.root)
+            return
+        requested = simpledialog.askstring("Rename Backup", "New backup name:", initialvalue=old_name, parent=self.root)
+        if requested is None:
+            return
+        new_name = str(requested).strip()
+        if not self._is_valid_profile_name(new_name):
+            messagebox.showwarning("Backup", "Use 1-40 chars: letters, numbers, space, dot, dash, underscore.", parent=self.root)
+            return
+        target = backup_path.parent / new_name
+        if target.exists():
+            messagebox.showwarning("Backup", f"A backup named '{new_name}' already exists.", parent=self.root)
+            return
+        try:
+            backup_path.rename(target)
+            self._refresh_full_backup_list()
+            self._set_status(f"Renamed backup '{old_name}' to '{new_name}'.", "ok")
+        except Exception as e:
+            self._set_status(f"Backup rename failed: {e}", "error")
+            messagebox.showerror("Backup", f"Failed to rename backup: {e}", parent=self.root)
+
+    def _delete_selected_full_backup(self) -> None:
+        if self.settings_full_backup_listbox is None:
+            return
+        selection = self.settings_full_backup_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Backup", "Select a backup first.", parent=self.root)
+            return
+        name = str(self.settings_full_backup_listbox.get(selection[0]))
+        backup_path = self.settings_full_backup_name_to_path.get(name)
+        if backup_path is None or not backup_path.exists():
+            self._refresh_full_backup_list()
+            messagebox.showerror("Backup", f"Backup not found: {name}", parent=self.root)
+            return
+        if not messagebox.askyesno("Delete Backup", f"Delete backup '{name}'?", parent=self.root):
+            return
+        try:
+            shutil.rmtree(backup_path)
+            self._refresh_full_backup_list()
+            self._set_status(f"Deleted backup '{name}'.", "ok")
+        except Exception as e:
+            self._set_status(f"Backup delete failed: {e}", "error")
+            messagebox.showerror("Backup", f"Failed to delete backup: {e}", parent=self.root)
+
+    def _json_section_sources(self) -> dict[str, Path]:
+        base = REPO_ROOT / "jsons"
+        return {
+            "configs": base / "configs",
+            "data": base / "data",
+            "calls": base / "calls",
+        }
+
+    def _section_backup_root(self) -> Path:
+        return self._persistent_backup_base_root() / "sections"
+
+    def _list_section_backups(self, section: str) -> list[Path]:
+        root = self._section_backup_root() / section
+        if not root.exists():
+            return []
+        return sorted([item for item in root.iterdir() if item.is_dir()], key=lambda item: item.name, reverse=True)
+
+    def _refresh_section_backup_list(self) -> None:
+        if self.settings_section_backup_listbox is None or self.settings_section_var is None:
+            return
+        section = str(self.settings_section_var.get() or "configs").strip().lower()
+        self.settings_section_backup_name_to_path.clear()
+        self.settings_section_backup_listbox.delete(0, tk.END)
+        for item in self._list_section_backups(section):
+            name = item.name
+            self.settings_section_backup_name_to_path[name] = item
+            self.settings_section_backup_listbox.insert(tk.END, name)
+
+    def _on_section_changed(self, _event=None) -> None:
+        self._refresh_section_backup_list()
+
+    def _create_section_backup(self) -> None:
+        if self.settings_section_var is None:
+            return
+        section = str(self.settings_section_var.get() or "").strip().lower()
+        source = self._json_section_sources().get(section)
+        if source is None:
+            messagebox.showwarning("Section Backup", "Select a valid section.", parent=self.root)
+            return
+        try:
+            root = self._section_backup_root() / section
+            root.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_dir = root / f"{section}_{stamp}"
+            suffix = 1
+            while backup_dir.exists():
+                backup_dir = root / f"{section}_{stamp}_{suffix}"
+                suffix += 1
+            if source.exists():
+                shutil.copytree(source, backup_dir)
+            else:
+                backup_dir.mkdir(parents=True, exist_ok=False)
+            self._refresh_section_backup_list()
+            self._set_status(f"Created {section} backup: {backup_dir.name}", "ok")
+        except Exception as e:
+            self._set_status(f"Section backup failed: {e}", "error")
+            messagebox.showerror("Section Backup", f"Failed to create section backup: {e}", parent=self.root)
+
+    def _restore_selected_section_backup(self) -> None:
+        if self.settings_section_backup_listbox is None or self.settings_section_var is None:
+            return
+        section = str(self.settings_section_var.get() or "").strip().lower()
+        source_dir = self._json_section_sources().get(section)
+        if source_dir is None:
+            messagebox.showwarning("Section Backup", "Select a valid section.", parent=self.root)
+            return
+        selection = self.settings_section_backup_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Section Backup", "Select a section backup to restore.", parent=self.root)
+            return
+        name = str(self.settings_section_backup_listbox.get(selection[0]))
+        backup_path = self.settings_section_backup_name_to_path.get(name)
+        if backup_path is None or not backup_path.exists():
+            self._refresh_section_backup_list()
+            messagebox.showerror("Section Backup", f"Backup not found: {name}", parent=self.root)
+            return
+        if not self._confirm_discard_unsaved(f"restoring {section} backup"):
+            return
+        if not messagebox.askyesno(
+            "Restore Section Backup",
+            f"Restore '{name}' into jsons/{section}?\nThis overwrites that section.",
+            parent=self.root,
+        ):
+            return
+        try:
+            pre_root = self._section_backup_root() / section
+            pre_root.mkdir(parents=True, exist_ok=True)
+            pre_name = f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            pre_path = pre_root / pre_name
+            suffix = 1
+            while pre_path.exists():
+                pre_path = pre_root / f"{pre_name}_{suffix}"
+                suffix += 1
+            if source_dir.exists():
+                shutil.copytree(source_dir, pre_path)
+                shutil.rmtree(source_dir)
+            shutil.copytree(backup_path, source_dir)
+
+            if section == "configs":
+                self.ui_profiles = self._load_ui_profiles(self._load_ui_settings())
+                active_name = str(self.ui_profiles.get("active_profile", "default"))
+                self.ui_settings = dict(
+                    self.ui_profiles.get("profiles", {}).get(active_name, self._default_ui_settings())
+                )
+                self.ui_state = self._load_ui_state()
+                self._refresh_settings_profile_controls()
+                self._sync_settings_controls_from_ui_settings()
+                self._apply_ui_style()
+            self._load_monitor_config_into_form()
+            self._load_owner_profile_into_editor()
+            self._refresh_chat_analytics()
+            self._refresh_glance()
+            self._refresh_snapshot_list()
+            self._refresh_full_backup_list()
+            self._refresh_section_backup_list()
+            self._mark_dirty("settings", False)
+            self._mark_dirty("data", False)
+            self._set_status(f"Restored {section} backup '{name}'.", "ok")
+        except Exception as e:
+            self._set_status(f"Section restore failed: {e}", "error")
+            messagebox.showerror("Section Backup", f"Failed to restore section backup: {e}", parent=self.root)
+
+    def _rename_selected_section_backup(self) -> None:
+        if self.settings_section_backup_listbox is None:
+            return
+        selection = self.settings_section_backup_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Section Backup", "Select a section backup first.", parent=self.root)
+            return
+        old_name = str(self.settings_section_backup_listbox.get(selection[0]))
+        backup_path = self.settings_section_backup_name_to_path.get(old_name)
+        if backup_path is None or not backup_path.exists():
+            self._refresh_section_backup_list()
+            messagebox.showerror("Section Backup", f"Backup not found: {old_name}", parent=self.root)
+            return
+        requested = simpledialog.askstring(
+            "Rename Section Backup",
+            "New backup name:",
+            initialvalue=old_name,
+            parent=self.root,
+        )
+        if requested is None:
+            return
+        new_name = str(requested).strip()
+        if not self._is_valid_profile_name(new_name):
+            messagebox.showwarning("Section Backup", "Use 1-40 chars: letters, numbers, space, dot, dash, underscore.", parent=self.root)
+            return
+        target = backup_path.parent / new_name
+        if target.exists():
+            messagebox.showwarning("Section Backup", f"A backup named '{new_name}' already exists.", parent=self.root)
+            return
+        try:
+            backup_path.rename(target)
+            self._refresh_section_backup_list()
+            self._set_status(f"Renamed section backup '{old_name}' to '{new_name}'.", "ok")
+        except Exception as e:
+            self._set_status(f"Section backup rename failed: {e}", "error")
+            messagebox.showerror("Section Backup", f"Failed to rename section backup: {e}", parent=self.root)
+
+    def _delete_selected_section_backup(self) -> None:
+        if self.settings_section_backup_listbox is None:
+            return
+        selection = self.settings_section_backup_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Section Backup", "Select a section backup first.", parent=self.root)
+            return
+        name = str(self.settings_section_backup_listbox.get(selection[0]))
+        backup_path = self.settings_section_backup_name_to_path.get(name)
+        if backup_path is None or not backup_path.exists():
+            self._refresh_section_backup_list()
+            messagebox.showerror("Section Backup", f"Backup not found: {name}", parent=self.root)
+            return
+        if not messagebox.askyesno("Delete Section Backup", f"Delete section backup '{name}'?", parent=self.root):
+            return
+        try:
+            shutil.rmtree(backup_path)
+            self._refresh_section_backup_list()
+            self._set_status(f"Deleted section backup '{name}'.", "ok")
+        except Exception as e:
+            self._set_status(f"Section backup delete failed: {e}", "error")
+            messagebox.showerror("Section Backup", f"Failed to delete section backup: {e}", parent=self.root)
+
+    def _wipe_jsons_contents(self) -> None:
+        if not messagebox.askyesno(
+            "Wipe jsons",
+            "Delete all files/folders inside jsons/? A safety full backup will be created first.",
+            parent=self.root,
+        ):
+            return
+        token = simpledialog.askstring(
+            "Confirm Wipe",
+            "Type WIPE to continue:",
+            parent=self.root,
+        )
+        if str(token or "").strip().upper() != "WIPE":
+            self._set_status("Wipe cancelled.", "warn")
+            return
+        try:
+            self._create_full_backup_folder(name_prefix="pre_wipe")
+            jsons_root = REPO_ROOT / "jsons"
+            jsons_root.mkdir(parents=True, exist_ok=True)
+            for child in list(jsons_root.iterdir()):
+                if child.is_dir():
+                    shutil.rmtree(child)
+                else:
+                    child.unlink()
+
+            for folder in ("configs", "data", "calls"):
+                (jsons_root / folder).mkdir(parents=True, exist_ok=True)
+
+            self.ui_settings = self._default_ui_settings()
+            self.ui_profiles = self._default_ui_profiles()
+            self.ui_state = self._default_ui_state()
+            self._save_ui_profiles()
+            self._save_ui_settings()
+            self._save_ui_state()
+            self._sync_settings_controls_from_ui_settings()
+            self._refresh_settings_profile_controls()
+            self._apply_ui_style()
+            self._refresh_snapshot_list()
+            self._refresh_full_backup_list()
+            self._refresh_section_backup_list()
+            self._load_monitor_config_into_form()
+            self._load_owner_profile_into_editor()
+            self._refresh_chat_analytics()
+            self._refresh_glance()
+            self._mark_dirty("settings", False)
+            self._mark_dirty("data", False)
+            self._set_status("Wiped jsons contents. You can now build custom JSON data from scratch.", "ok")
+            self.log_queue.put("[settings] wiped jsons contents")
+        except Exception as e:
+            self._set_status(f"Wipe failed: {e}", "error")
+            messagebox.showerror("Wipe jsons", f"Failed to wipe jsons contents: {e}", parent=self.root)
+
     def _build_settings_tab(self, parent: ttk.Frame):
         container = ttk.Frame(parent)
         container.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
@@ -1795,16 +2762,18 @@ class MaiControlPanel:
         appearance = ttk.LabelFrame(container, text="Appearance")
         appearance.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         appearance.columnconfigure(1, weight=1)
+        appearance.columnconfigure(2, weight=1)
 
         self.settings_dark_mode_var = tk.BooleanVar(value=bool(self.ui_settings.get("dark_mode", False)))
         self.settings_colorblind_mode_var = tk.StringVar(value=str(self.ui_settings.get("colorblind_mode", "standard")))
         self.settings_font_scale_var = tk.StringVar(value=str(self.ui_settings.get("font_scale", "100%")))
         self.settings_density_var = tk.StringVar(value=str(self.ui_settings.get("density", "comfortable")))
+        self.settings_ui_profile_var = tk.StringVar(value=str(self.ui_profiles.get("active_profile", "default")))
 
         ttk.Checkbutton(appearance, text="Dark mode", variable=self.settings_dark_mode_var).grid(
             row=0, column=0, sticky="w", padx=8, pady=8
         )
-        ttk.Label(appearance, text="Color profile").grid(row=1, column=0, sticky="w", padx=8, pady=8)
+        ttk.Label(appearance, text="Vision preset").grid(row=1, column=0, sticky="w", padx=8, pady=8)
         preset_combo = ttk.Combobox(
             appearance,
             textvariable=self.settings_colorblind_mode_var,
@@ -1839,6 +2808,46 @@ class MaiControlPanel:
             state="readonly",
             width=14,
         ).grid(row=3, column=1, sticky="w", padx=8, pady=8)
+
+        ttk.Label(appearance, text="UI profile").grid(row=4, column=0, sticky="w", padx=8, pady=8)
+        profile_combo = ttk.Combobox(
+            appearance,
+            textvariable=self.settings_ui_profile_var,
+            state="readonly",
+            width=22,
+        )
+        profile_combo.grid(row=4, column=1, sticky="w", padx=8, pady=8)
+        profile_combo.bind("<<ComboboxSelected>>", self._on_settings_profile_selected)
+        self.settings_profile_combo = profile_combo
+
+        profile_actions = ttk.Frame(appearance)
+        profile_actions.grid(row=4, column=2, sticky="w", padx=8, pady=8)
+        ttk.Button(profile_actions, text="Save As New", command=self._save_as_new_ui_profile).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(profile_actions, text="Rename", command=self._rename_selected_ui_profile).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(profile_actions, text="Delete", command=self._delete_selected_ui_profile).pack(side=tk.LEFT)
+
+        appearance_actions = ttk.Frame(appearance)
+        appearance_actions.grid(row=0, column=3, rowspan=5, sticky="ne", padx=8, pady=8)
+        ttk.Button(
+            appearance_actions,
+            text="Save Settings",
+            command=lambda: self._apply_ui_settings_from_controls(save=True),
+        ).pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
+        ttk.Button(
+            appearance_actions,
+            text="Apply",
+            command=lambda: self._apply_ui_settings_from_controls(save=False),
+        ).pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
+        ttk.Button(
+            appearance_actions,
+            text="Reset To Profile",
+            command=lambda: self._apply_colorblind_preset_to_controls(self.settings_colorblind_mode_var.get()),
+        ).pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
+        ttk.Button(
+            appearance_actions,
+            text="Backup All Data",
+            command=self._create_full_data_backup,
+        ).pack(side=tk.TOP, fill=tk.X)
 
         chips = ttk.LabelFrame(container, text="Monitor Chip Colors")
         chips.grid(row=1, column=0, sticky="ew", pady=(0, 8))
@@ -1886,44 +2895,98 @@ class MaiControlPanel:
             ).grid(row=row, column=2, sticky="w", padx=8, pady=6)
             self._bind_dirty_var("settings", var)
 
-        snapshots = ttk.LabelFrame(container, text="Config Snapshots")
-        snapshots.grid(row=3, column=0, sticky="ew", pady=(0, 8))
-        snapshots.columnconfigure(0, weight=1)
-        snapshot_box = ttk.Frame(snapshots)
-        snapshot_box.pack(fill=tk.X, padx=8, pady=8)
-        snapshot_list, _snapshot_scroll = _scrolled_listbox(snapshot_box)
-        snapshot_list.configure(height=6)
-        self.settings_snapshot_listbox = snapshot_list
+        full_backups = ttk.LabelFrame(container, text="Full Data Backups (all jsons/*)")
+        full_backups.grid(row=3, column=0, sticky="ew", pady=(0, 8))
+        full_backups.columnconfigure(0, weight=1)
 
-        snapshot_actions = ttk.Frame(snapshots)
-        snapshot_actions.pack(anchor="w", padx=8, pady=(0, 8))
-        ttk.Button(snapshot_actions, text="Create Snapshot", command=self._create_config_snapshot).pack(
-            side=tk.LEFT, padx=(0, 8)
-        )
-        ttk.Button(snapshot_actions, text="Restore Selected", command=self._restore_selected_snapshot).pack(
-            side=tk.LEFT, padx=(0, 8)
-        )
-        ttk.Button(snapshot_actions, text="Refresh List", command=self._refresh_snapshot_list).pack(side=tk.LEFT)
+        full_backup_meta = ttk.Frame(full_backups)
+        full_backup_meta.pack(fill=tk.X, padx=8, pady=(8, 0))
+        ttk.Label(full_backup_meta, text="Stored at").pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Label(full_backup_meta, textvariable=self.settings_backup_root_var).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(full_backup_meta, text="Open Folder", command=self._open_backup_folder).pack(side=tk.RIGHT)
 
-        actions = ttk.Frame(container)
-        actions.grid(row=4, column=0, sticky="ew")
-        ttk.Button(actions, text="Apply", command=lambda: self._apply_ui_settings_from_controls(save=False)).pack(
+        full_backup_box = ttk.Frame(full_backups)
+        full_backup_box.pack(fill=tk.X, padx=8, pady=8)
+        full_backup_list, _full_backup_scroll = _scrolled_listbox(full_backup_box)
+        full_backup_list.configure(height=6)
+        self.settings_full_backup_listbox = full_backup_list
+
+        full_backup_actions = ttk.Frame(full_backups)
+        full_backup_actions.pack(anchor="w", padx=8, pady=(0, 8))
+        ttk.Button(full_backup_actions, text="Create Full Backup", command=self._create_full_data_backup).pack(
             side=tk.LEFT, padx=(0, 8)
         )
-        ttk.Button(actions, text="Save Settings", command=lambda: self._apply_ui_settings_from_controls(save=True)).pack(
+        ttk.Button(full_backup_actions, text="Restore Selected", command=self._restore_selected_full_backup).pack(
             side=tk.LEFT, padx=(0, 8)
         )
-        ttk.Button(
-            actions,
-            text="Reset To Profile",
-            command=lambda: self._apply_colorblind_preset_to_controls(self.settings_colorblind_mode_var.get()),
-        ).pack(side=tk.LEFT)
+        ttk.Button(full_backup_actions, text="Rename Selected", command=self._rename_selected_full_backup).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(full_backup_actions, text="Delete Selected", command=self._delete_selected_full_backup).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(full_backup_actions, text="Refresh List", command=self._refresh_full_backup_list).pack(side=tk.LEFT)
+
+        section_backups = ttk.LabelFrame(container, text="Section Backups (configs/data/calls)")
+        section_backups.grid(row=4, column=0, sticky="ew", pady=(0, 8))
+        section_backups.columnconfigure(0, weight=1)
+
+        section_controls = ttk.Frame(section_backups)
+        section_controls.pack(fill=tk.X, padx=8, pady=(8, 4))
+        self.settings_section_var = tk.StringVar(value="configs")
+        ttk.Label(section_controls, text="Section").pack(side=tk.LEFT, padx=(0, 8))
+        section_combo = ttk.Combobox(
+            section_controls,
+            textvariable=self.settings_section_var,
+            values=["configs", "data", "calls"],
+            state="readonly",
+            width=12,
+        )
+        section_combo.pack(side=tk.LEFT, padx=(0, 8))
+        section_combo.bind("<<ComboboxSelected>>", self._on_section_changed)
+
+        section_list_frame = ttk.Frame(section_backups)
+        section_list_frame.pack(fill=tk.X, padx=8, pady=4)
+        section_backup_list, _section_backup_scroll = _scrolled_listbox(section_list_frame)
+        section_backup_list.configure(height=6)
+        self.settings_section_backup_listbox = section_backup_list
+
+        section_actions = ttk.Frame(section_backups)
+        section_actions.pack(anchor="w", padx=8, pady=(0, 8))
+        ttk.Button(section_actions, text="Create Backup", command=self._create_section_backup).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(section_actions, text="Restore Selected", command=self._restore_selected_section_backup).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(section_actions, text="Rename Selected", command=self._rename_selected_section_backup).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(section_actions, text="Delete Selected", command=self._delete_selected_section_backup).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(section_actions, text="Refresh List", command=self._refresh_section_backup_list).pack(side=tk.LEFT)
+
+        dangerous = ttk.LabelFrame(container, text="Danger Zone")
+        dangerous.grid(row=5, column=0, sticky="ew", pady=(0, 8))
+        dangerous.columnconfigure(1, weight=1)
+        ttk.Label(
+            dangerous,
+            text="Wipe all contents under jsons/ (keeps empty folders and UI config defaults).",
+            foreground=self.theme_palette["text_subtle"],
+        ).grid(row=0, column=0, sticky="w", padx=8, pady=8)
+        ttk.Button(dangerous, text="Wipe jsons Contents", command=self._wipe_jsons_contents).grid(
+            row=0, column=1, sticky="e", padx=8, pady=8
+        )
 
         self._bind_dirty_var("settings", self.settings_dark_mode_var)
         self._bind_dirty_var("settings", self.settings_colorblind_mode_var)
         self._bind_dirty_var("settings", self.settings_font_scale_var)
         self._bind_dirty_var("settings", self.settings_density_var)
-        self._refresh_snapshot_list()
+        self._bind_dirty_var("settings", self.settings_ui_profile_var)
+        self._refresh_settings_profile_controls()
+        self._refresh_full_backup_list()
+        self._refresh_section_backup_list()
         self._mark_dirty("settings", False)
 
     def _clear_treeview(self, tree: ttk.Treeview | None) -> None:
@@ -2178,8 +3241,10 @@ class MaiControlPanel:
         data_inner.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         themes_tab = ttk.Frame(data_inner)
         tones_tab = ttk.Frame(data_inner)
+        moods_tab = ttk.Frame(data_inner)
         data_inner.add(themes_tab, text="Themes")
         data_inner.add(tones_tab, text="Tones")
+        data_inner.add(moods_tab, text="Moods")
 
         # Users sub-tabs
         users_note = ttk.LabelFrame(
@@ -2207,14 +3272,7 @@ class MaiControlPanel:
         users_inner.add(moderator_users_tab, text="Moderators")
         users_inner.add(owner_tab, text="Owner")
 
-        self._build_list_editor(
-            cooldown_tab,
-            load_fn=lambda: load_json(Paths.COOLDOWN_MSGS, default={}).get("cooldown_messages", []),
-            save_fn=lambda items: atomic_write_json(Paths.COOLDOWN_MSGS, {"cooldown_messages": items}),
-            hint="{remaining} is replaced with the cooldown seconds at runtime.",
-            source_path=Paths.COOLDOWN_MSGS,
-            item_label="Cooldown Message",
-        )
+        self._build_tool_cooldown_editor(cooldown_tab)
         self._build_list_editor(
             fallback_tab,
             load_fn=lambda: load_json(Paths.FALLBACK_FLIRTS, default={}).get("fallback_flirts", []),
@@ -2256,6 +3314,7 @@ class MaiControlPanel:
             list_fields={"tags"},
             grouped_tree=True,
         )
+        self._build_moods_editor(moods_tab)
         self._build_kv_editor(
             commands_tab,
             path=Paths.COMMANDS,
@@ -2351,6 +3410,428 @@ class MaiControlPanel:
         ttk.Button(actions, text="Save", command=_save_command_messages).pack(side=tk.LEFT)
 
         _load_command_messages()
+
+    def _build_moods_editor(self, parent: ttk.Frame):
+        payload_store: dict = {"default_mood": "neutral", "moods": {}}
+        visible_keys: list[str] = []
+        key_to_node: dict[str, str] = {}
+        folder_node_to_name: dict[str, str] = {}
+        group_open_state: dict[str, bool] = {}
+        suspend_dirty: dict[str, bool] = {"value": False}
+
+        container = ttk.Frame(parent)
+        container.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(1, weight=1)
+
+        top = ttk.LabelFrame(container, text="Mood Defaults")
+        top.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        top.columnconfigure(1, weight=1)
+
+        default_mood_var = tk.StringVar(value="neutral")
+        ttk.Label(top, text="Default mood").grid(row=0, column=0, sticky="w", padx=8, pady=8)
+        default_mood_combo = ttk.Combobox(top, textvariable=default_mood_var, state="readonly", width=24)
+        default_mood_combo.grid(row=0, column=1, sticky="w", padx=8, pady=8)
+        ttk.Label(
+            top,
+            text="This mood is used as safe fallback when no active session mood is available.",
+            foreground=self.theme_palette["text_subtle"],
+        ).grid(row=0, column=2, sticky="w", padx=8, pady=8)
+
+        pane = ttk.PanedWindow(container, orient=tk.HORIZONTAL)
+        pane.grid(row=1, column=0, sticky="nsew")
+
+        left = ttk.Frame(pane)
+        pane.add(left, weight=1)
+        right = ttk.Frame(pane)
+        pane.add(right, weight=2)
+
+        filter_frame = ttk.LabelFrame(left, text="Filter")
+        filter_frame.pack(fill=tk.X, padx=4, pady=(4, 2))
+        filter_frame.columnconfigure(1, weight=1)
+        search_var = tk.StringVar(value="")
+        ttk.Label(filter_frame, text="Search").grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(filter_frame, textvariable=search_var, width=24).grid(row=0, column=1, sticky="we", padx=8, pady=4)
+
+        folder_var = tk.StringVar(value="All")
+        ttk.Label(filter_frame, text="Folder").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        folder_combo = ttk.Combobox(filter_frame, textvariable=folder_var, values=["All"], state="readonly", width=24)
+        folder_combo.grid(row=1, column=1, sticky="we", padx=8, pady=4)
+
+        grouped_view_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            filter_frame,
+            text="Group moods by folder (collapsible)",
+            variable=grouped_view_var,
+        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=8, pady=(2, 2))
+
+        stats_var = tk.StringVar(value="0 moods")
+        ttk.Label(filter_frame, textvariable=stats_var, foreground="gray").grid(
+            row=3, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 4)
+        )
+
+        keys_frame = ttk.LabelFrame(left, text="Mood Keys")
+        keys_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        tree_container = ttk.Frame(keys_frame)
+        tree_container.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        tree = ttk.Treeview(tree_container, show="tree", selectmode="browse", height=18)
+        tree_scroll = ttk.Scrollbar(tree_container, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=tree_scroll.set)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        form = ttk.LabelFrame(right, text="Edit Mood")
+        form.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        form.columnconfigure(1, weight=1)
+        form.rowconfigure(4, weight=1)
+        form.rowconfigure(5, weight=1)
+        form.rowconfigure(6, weight=1)
+
+        key_var = tk.StringVar(value="")
+        folder_edit_var = tk.StringVar(value="")
+        weight_var = tk.StringVar(value="1")
+        description_var = tk.StringVar(value="")
+
+        ttk.Label(form, text="Mood key").grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(form, textvariable=key_var, width=30).grid(row=0, column=1, sticky="we", padx=8, pady=4)
+
+        ttk.Label(form, text="Folder").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        folder_edit_combo = ttk.Combobox(form, textvariable=folder_edit_var, width=30)
+        folder_edit_combo.grid(row=1, column=1, sticky="w", padx=8, pady=4)
+
+        ttk.Label(form, text="Weight").grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(form, textvariable=weight_var, width=12).grid(row=2, column=1, sticky="w", padx=8, pady=4)
+
+        ttk.Label(form, text="Description").grid(row=3, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(form, textvariable=description_var, width=72).grid(row=3, column=1, sticky="we", padx=8, pady=4)
+
+        ttk.Label(form, text="Monitor guidance").grid(row=4, column=0, sticky="nw", padx=8, pady=4)
+        monitor_guidance_text = tk.Text(form, wrap=tk.WORD, height=5)
+        monitor_guidance_text.grid(row=4, column=1, sticky="nsew", padx=8, pady=4)
+        self._register_text_widget(monitor_guidance_text)
+
+        ttk.Label(form, text="Flirt guidance").grid(row=5, column=0, sticky="nw", padx=8, pady=4)
+        flirt_guidance_text = tk.Text(form, wrap=tk.WORD, height=5)
+        flirt_guidance_text.grid(row=5, column=1, sticky="nsew", padx=8, pady=4)
+        self._register_text_widget(flirt_guidance_text)
+
+        ttk.Label(form, text="Tarot guidance").grid(row=6, column=0, sticky="nw", padx=8, pady=4)
+        tarot_guidance_text = tk.Text(form, wrap=tk.WORD, height=5)
+        tarot_guidance_text.grid(row=6, column=1, sticky="nsew", padx=8, pady=4)
+        self._register_text_widget(tarot_guidance_text)
+
+        selected_key_state: dict[str, str] = {"value": ""}
+
+        def _extract_guidance(widget: tk.Text) -> str:
+            return widget.get("1.0", tk.END).strip()
+
+        def _set_guidance(widget: tk.Text, value: str) -> None:
+            widget.delete("1.0", tk.END)
+            widget.insert("1.0", str(value or ""))
+
+        def _validate_payload(data: dict) -> tuple[bool, str]:
+            moods = data.get("moods", {})
+            if not isinstance(moods, dict) or not moods:
+                return False, "At least one mood must exist."
+            default_mood = str(data.get("default_mood", "")).strip().lower()
+            if default_mood not in moods:
+                return False, "Default mood must exist in moods."
+            has_positive_weight = False
+            for key, entry in moods.items():
+                if not str(key).strip():
+                    return False, "Mood key cannot be empty."
+                if not isinstance(entry, dict):
+                    return False, f"Mood '{key}' must be an object."
+                try:
+                    weight = int(entry.get("weight", 0))
+                except Exception:
+                    return False, f"Mood '{key}' has invalid weight."
+                if weight < 0:
+                    return False, f"Mood '{key}' weight must be >= 0."
+                if weight > 0:
+                    has_positive_weight = True
+            if not has_positive_weight:
+                return False, "At least one mood must have weight > 0."
+            return True, ""
+
+        def _persist(show_dialog: bool = False) -> bool:
+            normalized = load_moods_from_payload(payload_store)
+            ok, error_message = _validate_payload(normalized)
+            if not ok:
+                messagebox.showwarning("Validation", error_message, parent=self.root)
+                self._set_status(f"Moods validation failed: {error_message}", "warn")
+                return False
+            atomic_write_json(Paths.MOODS, normalized)
+            payload_store["default_mood"] = normalized["default_mood"]
+            payload_store["moods"] = normalized["moods"]
+            self.log_queue.put("[data editor] moods saved")
+            self._set_status("Moods saved.", "ok")
+            self._mark_dirty("data", False)
+            if show_dialog:
+                messagebox.showinfo("Saved", "Moods saved.", parent=self.root)
+            return True
+
+        def _set_dirty_tracking(active: bool) -> None:
+            suspend_dirty["value"] = bool(active)
+
+        def _set_form_fields(
+            key_value: str,
+            folder_value: str,
+            weight_value: str,
+            description_value: str,
+            monitor_guidance: str,
+            flirt_guidance: str,
+            tarot_guidance: str,
+        ) -> None:
+            _set_dirty_tracking(True)
+            try:
+                key_var.set(key_value)
+                folder_edit_var.set(folder_value)
+                weight_var.set(weight_value)
+                description_var.set(description_value)
+                _set_guidance(monitor_guidance_text, monitor_guidance)
+                _set_guidance(flirt_guidance_text, flirt_guidance)
+                _set_guidance(tarot_guidance_text, tarot_guidance)
+            finally:
+                _set_dirty_tracking(False)
+
+        def _update_default_combo():
+            mood_keys = sorted(payload_store.get("moods", {}).keys(), key=str.lower)
+            default_mood_combo["values"] = mood_keys
+            current_default = str(payload_store.get("default_mood", "neutral")).strip().lower()
+            if current_default not in mood_keys and mood_keys:
+                current_default = mood_keys[0]
+            if not current_default:
+                current_default = "neutral"
+            _set_dirty_tracking(True)
+            try:
+                default_mood_var.set(current_default)
+            finally:
+                _set_dirty_tracking(False)
+            payload_store["default_mood"] = current_default
+
+        def _update_folder_options():
+            folders: set[str] = set()
+            has_unfiled = False
+            for entry in payload_store.get("moods", {}).values():
+                mood_entry = entry if isinstance(entry, dict) else {}
+                folder_name = str(mood_entry.get("folder", "")).strip()
+                if folder_name:
+                    folders.add(folder_name)
+                else:
+                    has_unfiled = True
+
+            sorted_folders = sorted(folders, key=str.lower)
+            folder_values = ["All", *sorted_folders]
+            if has_unfiled:
+                folder_values.append("(Unfiled)")
+            if folder_var.get().strip() not in folder_values:
+                folder_var.set("All")
+            folder_combo["values"] = folder_values
+            folder_edit_combo["values"] = sorted_folders
+
+        def _selected_key() -> str:
+            selected = tree.selection()
+            if not selected:
+                return ""
+            node_id = selected[0]
+            return next((k for k, node in key_to_node.items() if node == node_id), "")
+
+        def _remember_group_open_state():
+            for node_id, folder_name in list(folder_node_to_name.items()):
+                if tree.exists(node_id):
+                    group_open_state[folder_name] = bool(tree.item(node_id, "open"))
+
+        def _refresh_keys(select_key: str | None = None):
+            query = search_var.get().strip().lower()
+            selected_folder = folder_var.get().strip()
+            grouped = bool(grouped_view_var.get() and selected_folder == "All")
+            _remember_group_open_state()
+            tree.delete(*tree.get_children())
+            key_to_node.clear()
+            folder_node_to_name.clear()
+            visible_keys.clear()
+            grouped_map: dict[str, list[str]] = {}
+
+            for key in sorted(payload_store.get("moods", {}).keys(), key=str.lower):
+                entry = payload_store.get("moods", {}).get(key, {})
+                folder_name = str(entry.get("folder", "")).strip()
+                description = str(entry.get("description", "")).strip()
+                haystack = f"{key} {folder_name} {description}".lower()
+                if query and query not in haystack:
+                    continue
+                if selected_folder == "(Unfiled)" and folder_name:
+                    continue
+                if selected_folder not in {"All", "(Unfiled)"} and folder_name.lower() != selected_folder.lower():
+                    continue
+                visible_keys.append(key)
+                if grouped:
+                    group_name = folder_name or "(Unfiled)"
+                    grouped_map.setdefault(group_name, []).append(key)
+                else:
+                    node = tree.insert("", tk.END, text=f"\u2022  {key}")
+                    key_to_node[key] = node
+
+            if grouped:
+                for folder_name in sorted(grouped_map.keys(), key=str.lower):
+                    keys = sorted(grouped_map[folder_name], key=str.lower)
+                    parent_id = tree.insert(
+                        "",
+                        tk.END,
+                        text=f"\U0001F4C1  {folder_name} ({len(keys)})",
+                        open=group_open_state.get(folder_name, True),
+                    )
+                    folder_node_to_name[parent_id] = folder_name
+                    for key in keys:
+                        node = tree.insert(parent_id, tk.END, text=f"    {key}")
+                        key_to_node[key] = node
+
+            total = len(payload_store.get("moods", {}))
+            if grouped:
+                stats_var.set(f"{len(visible_keys)} shown in {len(grouped_map)} folders / {total} total")
+            else:
+                stats_var.set(f"{len(visible_keys)} shown / {total} total")
+            target = select_key or selected_key_state["value"]
+            if target and target in key_to_node:
+                node = key_to_node[target]
+                tree.selection_set(node)
+                tree.focus(node)
+                tree.see(node)
+
+        def _load():
+            payload = load_moods(Paths.MOODS)
+            payload_store["default_mood"] = payload.get("default_mood", "neutral")
+            payload_store["moods"] = payload.get("moods", {})
+            selected_key_state["value"] = ""
+            _update_default_combo()
+            _update_folder_options()
+            _refresh_keys()
+            _new()
+            self._mark_dirty("data", False)
+
+        def _on_select(_event=None):
+            key = _selected_key()
+            if not key:
+                return
+            selected_key_state["value"] = key
+            entry = payload_store.get("moods", {}).get(key, {})
+            _set_form_fields(
+                key,
+                str(entry.get("folder", "")).strip(),
+                str(entry.get("weight", 0)),
+                str(entry.get("description", "")),
+                str(entry.get("monitor_guidance", "")),
+                str(entry.get("flirt_guidance", "")),
+                str(entry.get("tarot_guidance", "")),
+            )
+
+        def _new():
+            tree.selection_remove(tree.selection())
+            selected_key_state["value"] = ""
+            selected_folder = folder_var.get().strip()
+            folder_value = "" if selected_folder in {"All", "(Unfiled)"} else selected_folder
+            _set_form_fields("", folder_value, "1", "", "", "", "")
+
+        def _save_selected():
+            raw_key = key_var.get().strip().lower()
+            if not raw_key:
+                messagebox.showwarning("Save", "Mood key cannot be empty.", parent=self.root)
+                return
+            try:
+                weight = int(weight_var.get().strip() or "0")
+            except Exception:
+                messagebox.showwarning("Save", "Weight must be an integer.", parent=self.root)
+                return
+            if weight < 0:
+                messagebox.showwarning("Save", "Weight must be >= 0.", parent=self.root)
+                return
+
+            old_key = selected_key_state["value"]
+            moods = payload_store.get("moods", {})
+            if old_key and old_key != raw_key:
+                moods.pop(old_key, None)
+                if payload_store.get("default_mood", "") == old_key:
+                    payload_store["default_mood"] = raw_key
+
+            moods[raw_key] = {
+                "weight": weight,
+                "folder": folder_edit_var.get().strip(),
+                "description": description_var.get().strip(),
+                "monitor_guidance": _extract_guidance(monitor_guidance_text),
+                "flirt_guidance": _extract_guidance(flirt_guidance_text),
+                "tarot_guidance": _extract_guidance(tarot_guidance_text),
+            }
+            payload_store["moods"] = moods
+            selected_key_state["value"] = raw_key
+            if not default_mood_var.get().strip():
+                payload_store["default_mood"] = raw_key
+            _update_default_combo()
+            if not _persist(show_dialog=False):
+                return
+            _update_folder_options()
+            _refresh_keys(select_key=raw_key)
+
+        def _delete_selected():
+            key = selected_key_state["value"]
+            if not key:
+                return
+            if not messagebox.askyesno("Delete", f"Delete mood '{key}'?", parent=self.root):
+                return
+            moods = payload_store.get("moods", {})
+            moods.pop(key, None)
+            payload_store["moods"] = moods
+            selected_key_state["value"] = ""
+            if payload_store.get("default_mood", "") == key:
+                remaining = sorted(moods.keys(), key=str.lower)
+                payload_store["default_mood"] = remaining[0] if remaining else ""
+            _update_default_combo()
+            if not _persist(show_dialog=False):
+                return
+            _update_folder_options()
+            _new()
+            _refresh_keys()
+
+        def _save_all():
+            payload_store["default_mood"] = default_mood_var.get().strip().lower()
+            if _persist(show_dialog=True):
+                _update_default_combo()
+                _update_folder_options()
+                _refresh_keys(select_key=selected_key_state["value"] or None)
+
+        def _on_default_change(_event=None):
+            payload_store["default_mood"] = default_mood_var.get().strip().lower()
+            if suspend_dirty["value"]:
+                return
+            self._mark_dirty("data", True)
+
+        def _on_tree_open_close(_event=None):
+            node_id = tree.focus()
+            folder_name = folder_node_to_name.get(node_id)
+            if folder_name is None:
+                return
+            group_open_state[folder_name] = bool(tree.item(node_id, "open"))
+
+        tree.bind("<<TreeviewSelect>>", _on_select)
+        tree.bind("<<TreeviewOpen>>", _on_tree_open_close)
+        tree.bind("<<TreeviewClose>>", _on_tree_open_close)
+        search_var.trace_add("write", lambda *_args: _refresh_keys())
+        folder_combo.bind("<<ComboboxSelected>>", lambda _event: _refresh_keys())
+        grouped_view_var.trace_add("write", lambda *_args: _refresh_keys())
+        default_mood_combo.bind("<<ComboboxSelected>>", _on_default_change)
+        for var in (key_var, folder_edit_var, weight_var, description_var):
+            var.trace_add("write", lambda *_args: (None if suspend_dirty["value"] else self._mark_dirty("data", True)))
+        for widget in (monitor_guidance_text, flirt_guidance_text, tarot_guidance_text):
+            widget.bind("<KeyRelease>", lambda _event: self._mark_dirty("data", True))
+
+        actions = ttk.Frame(right)
+        actions.pack(anchor="w", padx=4, pady=4)
+        ttk.Button(actions, text="Reload", command=_load).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="New", command=_new).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="Save Selected", command=_save_selected).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="Delete Selected", command=_delete_selected).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="Save All to File", command=_save_all).pack(side=tk.LEFT, padx=12)
+
+        _load()
 
     def _build_owner_profile_editor(self, parent: ttk.Frame):
         frame = ttk.LabelFrame(parent, text="Owner Profile Context")
@@ -2463,6 +3944,312 @@ class MaiControlPanel:
 
         self._load_owner_profile_into_editor()
 
+    def _build_tool_cooldown_editor(self, parent: ttk.Frame):
+        tools = ("flirt", "tarot")
+        records: list[dict[str, str]] = []
+        node_to_index: dict[str, int] = {}
+        folder_node_to_name: dict[str, str] = {}
+        scope_open_key = "list::tool_cooldowns::folder_open"
+        raw_open_state = self.ui_state.setdefault("tree_open_state", {}).get(scope_open_key, {})
+        group_open_state: dict[str, bool] = (
+            {str(name): bool(is_open) for name, is_open in raw_open_state.items()}
+            if isinstance(raw_open_state, dict)
+            else {}
+        )
+
+        pane = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
+        pane.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+        left = ttk.Frame(pane)
+        pane.add(left, weight=1)
+
+        filter_frame = ttk.LabelFrame(left, text="Filter")
+        filter_frame.pack(fill=tk.X, padx=4, pady=(4, 2))
+        filter_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(
+            filter_frame,
+            text="{remaining} is replaced with cooldown seconds at runtime. Set Folder before adding new lines.",
+            foreground="gray",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 2))
+
+        search_var = tk.StringVar(value="")
+        folder_var = tk.StringVar(value="All")
+        grouped_view_var = tk.BooleanVar(value=True)
+        stats_var = tk.StringVar(value="0 shown / 0 total")
+
+        ttk.Label(filter_frame, text="Search").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(filter_frame, textvariable=search_var, width=24).grid(row=1, column=1, sticky="we", padx=8, pady=4)
+
+        ttk.Label(filter_frame, text="Folder").grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        folder_combo = ttk.Combobox(
+            filter_frame,
+            textvariable=folder_var,
+            values=["All", "flirt", "tarot"],
+            state="readonly",
+            width=24,
+        )
+        folder_combo.grid(row=2, column=1, sticky="we", padx=8, pady=4)
+
+        ttk.Checkbutton(
+            filter_frame,
+            text="Group items by folder (collapsible)",
+            variable=grouped_view_var,
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=8, pady=(2, 4))
+
+        ttk.Label(filter_frame, textvariable=stats_var, foreground="gray").grid(
+            row=4, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 4)
+        )
+
+        list_frame = ttk.LabelFrame(left, text="Cooldown Messages")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        tree_actions = ttk.Frame(list_frame)
+        tree_actions.pack(side=tk.TOP, fill=tk.X, padx=4, pady=(2, 4))
+        expand_btn = ttk.Button(tree_actions, text="Expand All", width=12)
+        collapse_btn = ttk.Button(tree_actions, text="Collapse All", width=12)
+        expand_btn.pack(side=tk.LEFT, padx=(0, 6))
+        collapse_btn.pack(side=tk.LEFT)
+
+        list_inner = ttk.Frame(list_frame)
+        list_inner.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        tree = ttk.Treeview(list_inner, show="tree", selectmode="browse", height=18)
+        tree_scroll = ttk.Scrollbar(list_inner, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=tree_scroll.set)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        right = ttk.Frame(pane)
+        pane.add(right, weight=2)
+
+        form_frame = ttk.LabelFrame(right, text="Edit Entry")
+        form_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        form_frame.columnconfigure(1, weight=1)
+        form_frame.rowconfigure(0, weight=1)
+
+        ttk.Label(form_frame, text="Cooldown Message").grid(row=0, column=0, sticky="nw", padx=8, pady=4)
+        message_text = tk.Text(form_frame, width=56, height=8, wrap=tk.WORD)
+        message_text.grid(row=0, column=1, sticky="nsew", padx=8, pady=4)
+        self._register_text_widget(message_text)
+
+        folder_value_var = tk.StringVar(value="flirt")
+        ttk.Label(form_frame, text="Folder (tool, fixed)").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(form_frame, textvariable=folder_value_var, state="readonly", width=24).grid(
+            row=1, column=1, sticky="w", padx=8, pady=4
+        )
+
+        selected_index: dict[str, int | None] = {"value": None}
+
+        def _persist_group_open_state():
+            self.ui_state.setdefault("tree_open_state", {})[scope_open_key] = dict(group_open_state)
+            try:
+                self._save_ui_state()
+            except Exception:
+                pass
+
+        def _remember_group_open_state():
+            for node_id, folder_name in list(folder_node_to_name.items()):
+                if tree.exists(node_id):
+                    group_open_state[folder_name] = bool(tree.item(node_id, "open"))
+
+        def _selected_row_index() -> int | None:
+            selected = tree.selection()
+            if not selected:
+                return None
+            return node_to_index.get(selected[0])
+
+        def _set_group_open(is_open: bool):
+            for node in tree.get_children(""):
+                tree.item(node, open=is_open)
+                folder_name = folder_node_to_name.get(node)
+                if folder_name is not None:
+                    group_open_state[folder_name] = bool(is_open)
+            _persist_group_open_state()
+
+        def _refresh(selected_idx: int | None = None):
+            query = search_var.get().strip().lower()
+            selected_folder = folder_var.get().strip()
+            if selected_folder not in {"All", *tools}:
+                selected_folder = "All"
+                folder_var.set("All")
+            grouped = bool(grouped_view_var.get() and selected_folder == "All")
+
+            _remember_group_open_state()
+            tree.delete(*tree.get_children())
+            node_to_index.clear()
+            folder_node_to_name.clear()
+
+            visible_indices: list[int] = []
+            grouped_map: dict[str, list[int]] = {}
+            for idx, rec in enumerate(records):
+                tool = str(rec.get("tool", "")).strip().lower()
+                text = str(rec.get("text", "")).strip()
+                if tool not in tools or not text:
+                    continue
+                if selected_folder != "All" and tool != selected_folder:
+                    continue
+                haystack = f"{tool} {text}".lower()
+                if query and query not in haystack:
+                    continue
+                visible_indices.append(idx)
+                if grouped:
+                    grouped_map.setdefault(tool, []).append(idx)
+
+            if grouped:
+                for folder_name in sorted(grouped_map.keys(), key=str.lower):
+                    ids = grouped_map[folder_name]
+                    parent_id = tree.insert(
+                        "",
+                        tk.END,
+                        text=f"\U0001F4C1  {folder_name} ({len(ids)})",
+                        open=group_open_state.get(folder_name, True),
+                    )
+                    folder_node_to_name[parent_id] = folder_name
+                    for idx in ids:
+                        text_value = str(records[idx].get("text", "")).strip().replace("\n", " ")
+                        preview = text_value if len(text_value) <= 96 else text_value[:93] + "..."
+                        node_id = tree.insert(parent_id, tk.END, text=f"    {preview}")
+                        node_to_index[node_id] = idx
+            else:
+                for idx in visible_indices:
+                    text_value = str(records[idx].get("text", "")).strip().replace("\n", " ")
+                    preview = text_value if len(text_value) <= 96 else text_value[:93] + "..."
+                    node_id = tree.insert("", tk.END, text=f"\u2022  {preview}")
+                    node_to_index[node_id] = idx
+
+            if grouped:
+                stats_var.set(f"{len(visible_indices)} shown in {len(grouped_map)} folders / {len(records)} total")
+            else:
+                stats_var.set(f"{len(visible_indices)} shown / {len(records)} total")
+
+            target_idx = selected_idx if selected_idx is not None else selected_index["value"]
+            if target_idx is not None:
+                for node_id, idx in node_to_index.items():
+                    if idx == target_idx:
+                        tree.selection_set(node_id)
+                        tree.focus(node_id)
+                        tree.see(node_id)
+                        break
+
+            state = tk.NORMAL if grouped else tk.DISABLED
+            expand_btn.configure(state=state)
+            collapse_btn.configure(state=state)
+
+        def _persist(show_dialog: bool = False) -> bool:
+            try:
+                payload = {tool: [] for tool in tools}
+                for rec in records:
+                    tool = str(rec.get("tool", "")).strip().lower()
+                    text = str(rec.get("text", "")).strip()
+                    if tool in payload and text:
+                        payload[tool].append(text)
+
+                save_tool_cooldown_map(payload, Paths.COOLDOWN_MSGS)
+                self.log_queue.put("[data editor] saved tool cooldown messages")
+                self._mark_dirty("data", False)
+                if show_dialog:
+                    messagebox.showinfo("Saved", "Cooldown messages saved.", parent=self.root)
+                return True
+            except Exception as e:
+                messagebox.showerror("Save Error", str(e), parent=self.root)
+                self._set_status(f"Cooldown save failed: {e}", "error")
+                return False
+
+        def _load():
+            mapping = load_tool_cooldown_map(Paths.COOLDOWN_MSGS)
+            records.clear()
+            for tool in tools:
+                for message in mapping.get(tool, []):
+                    text = str(message).strip()
+                    if text:
+                        records.append({"tool": tool, "text": text})
+
+            selected_index["value"] = None
+            message_text.delete("1.0", tk.END)
+            selected_folder = folder_var.get().strip().lower()
+            folder_value_var.set(selected_folder if selected_folder in tools else "flirt")
+            _refresh()
+
+        def _on_select(_event=None):
+            idx = _selected_row_index()
+            selected_index["value"] = idx
+            if idx is None:
+                return
+            rec = records[idx]
+            message_text.delete("1.0", tk.END)
+            message_text.insert(tk.END, str(rec.get("text", "")))
+            folder_value_var.set(str(rec.get("tool", "flirt")))
+
+        def _new():
+            tree.selection_remove(tree.selection())
+            selected_index["value"] = None
+            message_text.delete("1.0", tk.END)
+            selected_folder = folder_var.get().strip().lower()
+            folder_value_var.set(selected_folder if selected_folder in tools else "flirt")
+
+        def _save_selected():
+            text = message_text.get("1.0", tk.END).strip()
+            if not text:
+                messagebox.showwarning("Save", "Cooldown message cannot be empty.", parent=self.root)
+                return
+
+            idx = selected_index.get("value")
+            if idx is None:
+                selected_folder = folder_var.get().strip().lower()
+                tool = selected_folder if selected_folder in tools else "flirt"
+                records.append({"tool": tool, "text": text})
+                idx = len(records) - 1
+            else:
+                records[idx]["text"] = text
+
+            if not _persist(show_dialog=False):
+                return
+            _refresh(selected_idx=idx)
+
+        def _delete_selected():
+            idx = selected_index.get("value")
+            if idx is None:
+                return
+            if not messagebox.askyesno("Delete", "Delete selected cooldown message?", parent=self.root):
+                return
+            records.pop(idx)
+            selected_index["value"] = None
+            if not _persist(show_dialog=False):
+                return
+            message_text.delete("1.0", tk.END)
+            selected_folder = folder_var.get().strip().lower()
+            folder_value_var.set(selected_folder if selected_folder in tools else "flirt")
+            _refresh()
+
+        def _on_tree_open_close(_event=None):
+            node_id = tree.focus()
+            folder_name = folder_node_to_name.get(node_id)
+            if folder_name is None:
+                return
+            group_open_state[folder_name] = bool(tree.item(node_id, "open"))
+            _persist_group_open_state()
+
+        tree.bind("<<TreeviewSelect>>", _on_select)
+        search_var.trace_add("write", lambda *_args: _refresh())
+        folder_combo.bind("<<ComboboxSelected>>", lambda _event: _refresh())
+        grouped_view_var.trace_add("write", lambda *_args: _refresh())
+        tree.bind("<<TreeviewOpen>>", _on_tree_open_close)
+        tree.bind("<<TreeviewClose>>", _on_tree_open_close)
+        expand_btn.configure(command=lambda: _set_group_open(True))
+        collapse_btn.configure(command=lambda: _set_group_open(False))
+        message_text.bind("<KeyRelease>", lambda _event: self._mark_dirty("data", True))
+
+        actions = ttk.Frame(right)
+        actions.pack(anchor="w", padx=4, pady=4)
+        ttk.Button(actions, text="Reload", command=_load).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="New", command=_new).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="Save Selected", command=_save_selected).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="Delete Selected", command=_delete_selected).pack(side=tk.LEFT, padx=4)
+        ttk.Button(actions, text="Save All to File", command=lambda: _persist(show_dialog=True)).pack(
+            side=tk.LEFT, padx=12
+        )
+
+        _load()
+
     def _build_list_editor(
         self,
         parent: ttk.Frame,
@@ -2572,10 +4359,24 @@ class MaiControlPanel:
         ttk.Entry(form_frame, textvariable=tags_edit_var, width=48).grid(row=2, column=1, sticky="we", padx=8, pady=4)
 
         scope_key = f"list::{source_path or item_label.lower()}"
+        scope_open_key = f"{scope_key}::folder_open"
+        raw_open_state = self.ui_state.setdefault("tree_open_state", {}).get(scope_open_key, {})
+        group_open_state: dict[str, bool] = (
+            {str(name): bool(is_open) for name, is_open in raw_open_state.items()}
+            if isinstance(raw_open_state, dict)
+            else {}
+        )
         records: list[dict] = []
         node_to_index: dict[str, int] = {}
         folder_node_to_name: dict[str, str] = {}
         drag_state: dict[str, object] = {"index": None, "dragging": False, "target_node": None}
+
+        def _persist_group_open_state():
+            self.ui_state.setdefault("tree_open_state", {})[scope_open_key] = dict(group_open_state)
+            try:
+                self._save_ui_state()
+            except Exception:
+                pass
 
         def _normalize_tags(value) -> list[str]:
             if isinstance(value, list):
@@ -2662,9 +4463,18 @@ class MaiControlPanel:
                 return None
             return node_to_index.get(selected[0])
 
+        def _remember_group_open_state():
+            for node_id, folder_name in list(folder_node_to_name.items()):
+                if tree.exists(node_id):
+                    group_open_state[folder_name] = bool(tree.item(node_id, "open"))
+
         def _set_group_open(is_open: bool):
             for node in tree.get_children(""):
                 tree.item(node, open=is_open)
+                folder_name = folder_node_to_name.get(node)
+                if folder_name is not None:
+                    group_open_state[folder_name] = bool(is_open)
+            _persist_group_open_state()
 
         def _update_filter_options():
             folders: set[str] = set()
@@ -2707,6 +4517,7 @@ class MaiControlPanel:
             target_idx = selected_index if selected_index is not None else previous
             query = search_var.get().strip().lower()
 
+            _remember_group_open_state()
             tree.delete(*tree.get_children())
             node_to_index.clear()
             folder_node_to_name.clear()
@@ -2748,7 +4559,12 @@ class MaiControlPanel:
             if grouped:
                 for folder_name in sorted(grouped_map.keys(), key=str.lower):
                     ids = grouped_map[folder_name]
-                    parent_id = tree.insert("", tk.END, text=f"\U0001F4C1  {folder_name} ({len(ids)})", open=True)
+                    parent_id = tree.insert(
+                        "",
+                        tk.END,
+                        text=f"\U0001F4C1  {folder_name} ({len(ids)})",
+                        open=group_open_state.get(folder_name, True),
+                    )
                     folder_node_to_name[parent_id] = folder_name
                     for idx in ids:
                         text_value = str(records[idx].get("text", "")).strip()
@@ -2947,10 +4763,20 @@ class MaiControlPanel:
             self.log_queue.put(f"[data editor] moved {item_label.lower()} to {folder_name or '(Unfiled)'}")
             _set_drop_target(None)
 
+        def _on_tree_open_close(_event=None):
+            node_id = tree.focus()
+            folder_name = folder_node_to_name.get(node_id)
+            if folder_name is None:
+                return
+            group_open_state[folder_name] = bool(tree.item(node_id, "open"))
+            _persist_group_open_state()
+
         tree.bind("<<TreeviewSelect>>", _on_select)
         tree.bind("<ButtonPress-1>", _on_tree_press)
         tree.bind("<B1-Motion>", _on_tree_drag)
         tree.bind("<ButtonRelease-1>", _on_tree_release)
+        tree.bind("<<TreeviewOpen>>", _on_tree_open_close)
+        tree.bind("<<TreeviewClose>>", _on_tree_open_close)
         search_var.trace_add("write", lambda *_args: _refresh())
         folder_combo.bind("<<ComboboxSelected>>", lambda _event: _refresh())
         tag_combo.bind("<<ComboboxSelected>>", lambda _event: _refresh())
@@ -3101,7 +4927,21 @@ class MaiControlPanel:
         filtered_keys: list[str] = []
         node_to_key: dict[str, str] = {}
         folder_node_to_group: dict[str, str] = {}
+        scope_open_key = f"kv::{path}::group_open"
+        raw_open_state = self.ui_state.setdefault("tree_open_state", {}).get(scope_open_key, {})
+        group_open_state: dict[str, bool] = (
+            {str(name): bool(is_open) for name, is_open in raw_open_state.items()}
+            if isinstance(raw_open_state, dict)
+            else {}
+        )
         drag_state: dict[str, object] = {"key": None, "dragging": False, "target_node": None}
+
+        def _persist_group_open_state():
+            self.ui_state.setdefault("tree_open_state", {})[scope_open_key] = dict(group_open_state)
+            try:
+                self._save_ui_state()
+            except Exception:
+                pass
 
         def _entry_group(entry: dict) -> str:
             if not group_field:
@@ -3211,9 +5051,18 @@ class MaiControlPanel:
                 return None
             return node_to_key.get(selected_nodes[0])
 
+        def _remember_group_open_state():
+            for node_id, grp in list(folder_node_to_group.items()):
+                if tree.exists(node_id):
+                    group_open_state[grp] = bool(tree.item(node_id, "open"))
+
         def _set_group_nodes_open(is_open: bool):
             for node in tree.get_children(""):
                 tree.item(node, open=is_open)
+                grp = folder_node_to_group.get(node)
+                if grp is not None:
+                    group_open_state[grp] = bool(is_open)
+            _persist_group_open_state()
 
         def _resolve_target_group_from_node(node_id: str) -> str | None:
             if node_id in folder_node_to_group:
@@ -3271,6 +5120,7 @@ class MaiControlPanel:
             selected_group = group_filter_var.get().strip()
             use_group_tree = bool(group_field and grouped_tree and grouped_view_var.get() and selected_group == "All")
 
+            _remember_group_open_state()
             tree.delete(*tree.get_children())
             filtered_keys.clear()
             node_to_key.clear()
@@ -3300,7 +5150,12 @@ class MaiControlPanel:
 
                 for grp in sorted(groups.keys(), key=str.lower):
                     keys = sorted(groups[grp], key=str.lower)
-                    parent_id = tree.insert("", tk.END, text=f"\U0001F4C1  {grp} ({len(keys)})", open=True)
+                    parent_id = tree.insert(
+                        "",
+                        tk.END,
+                        text=f"\U0001F4C1  {grp} ({len(keys)})",
+                        open=group_open_state.get(grp, True),
+                    )
                     folder_node_to_group[parent_id] = grp
                     for key in keys:
                         node = tree.insert(parent_id, tk.END, text=f"    {key}")
@@ -3459,10 +5314,20 @@ class MaiControlPanel:
             self.log_queue.put(f"[data editor] moved key '{moved_key}' -> {display_group}")
             _set_drop_target_node(None)
 
+        def _on_tree_open_close(_event=None):
+            node_id = tree.focus()
+            grp = folder_node_to_group.get(node_id)
+            if grp is None:
+                return
+            group_open_state[grp] = bool(tree.item(node_id, "open"))
+            _persist_group_open_state()
+
         tree.bind("<<TreeviewSelect>>", _on_select)
         tree.bind("<ButtonPress-1>", _on_tree_press)
         tree.bind("<B1-Motion>", _on_tree_drag)
         tree.bind("<ButtonRelease-1>", _on_tree_release)
+        tree.bind("<<TreeviewOpen>>", _on_tree_open_close)
+        tree.bind("<<TreeviewClose>>", _on_tree_open_close)
         anchors_text.bind("<KeyRelease>", lambda _event: _resize_anchors_text())
         search_var.trace_add("write", lambda *_args: _refresh_keys())
         if group_filter_combo is not None:
@@ -3558,8 +5423,49 @@ class MaiControlPanel:
                 script_paths.append(str(path.relative_to(REPO_ROOT)))
         return script_paths
 
+    @staticmethod
+    def _trim_path_punctuation(value: str) -> tuple[str, str]:
+        raw = str(value or "")
+        suffix_chars = ""
+        while raw and raw[-1] in "),.;:]}":
+            suffix_chars = raw[-1] + suffix_chars
+            raw = raw[:-1]
+        return raw, suffix_chars
+
+    def _path_display_for_log(self, value: str) -> str:
+        core, suffix = self._trim_path_punctuation(value)
+        if not core:
+            return value
+        try:
+            path_obj = Path(core)
+            if path_obj.is_absolute():
+                try:
+                    rel = path_obj.relative_to(REPO_ROOT)
+                    return str(rel) + suffix
+                except Exception:
+                    pass
+                name = path_obj.name or "<path>"
+                return f"<{name}>" + suffix
+        except Exception:
+            return value
+        return value
+
+    def _sanitize_log_text(self, message: str) -> str:
+        text = str(message)
+
+        # Redact Windows absolute paths like C:\Users\...
+        def _replace_windows_abs(match):
+            return self._path_display_for_log(match.group(0))
+
+        text = re.sub(r"(?i)\b[A-Z]:\\[^ \t\n\r\"']+", _replace_windows_abs, text)
+        return text
+
+    def _sanitize_command_for_log(self, command: list[str]) -> str:
+        parts = [self._path_display_for_log(str(arg)) for arg in command]
+        return " ".join(parts)
+
     def _append_log(self, message: str):
-        line = str(message)
+        line = self._sanitize_log_text(str(message))
         self.log_buffer.append(line)
         if len(self.log_buffer) > 5000:
             self.log_buffer = self.log_buffer[-5000:]
@@ -3597,7 +5503,7 @@ class MaiControlPanel:
             creationflags=creationflags,
         )
         self.processes[name] = proc
-        self.log_queue.put(f"[{name}] started: {' '.join(command)}")
+        self.log_queue.put(f"[{name}] started: {self._sanitize_command_for_log(command)}")
         self.root.after(0, self._refresh_glance)
 
         thread = threading.Thread(target=self._stream_process_output, args=(name, proc), daemon=True)
@@ -3611,6 +5517,7 @@ class MaiControlPanel:
         self.log_queue.put(f"[{name}] exited with code {exit_code}")
         if name == "monitor":
             self.root.after(0, lambda: self.monitor_status_var.set("Stopped"))
+            self.root.after(0, self._refresh_monitor_mood_state)
         self.root.after(0, self._refresh_glance)
 
     def _stop_process(self, name: str):
@@ -3636,11 +5543,18 @@ class MaiControlPanel:
             command = [sys.executable, "mai_monitor.py"]
         self._spawn_process("monitor", command)
         self.monitor_status_var.set("Running")
+        self.root.after(800, self._refresh_monitor_mood_state)
         self._refresh_glance()
 
     def stop_monitor(self):
         self._stop_process("monitor")
+        try:
+            state = read_mood_state(Paths.MOOD_STATE)
+            set_session_inactive(state, path=Paths.MOOD_STATE)
+        except Exception as e:
+            self.log_queue.put(f"[mood] failed to mark session inactive on stop: {e}")
         self.monitor_status_var.set("Stopped")
+        self._refresh_monitor_mood_state()
         self._refresh_glance()
 
     # -----------------------------------------------------------------------
@@ -3711,6 +5625,8 @@ class MaiControlPanel:
             "ignore_command_messages":   True,
             "config_reload_seconds":     2,
             "registry_flush_seconds":    30,
+            "mood_reroll_enabled":       True,
+            "mood_reroll_seconds":       1200,
             "irc_server":                "irc.chat.twitch.tv",
             "irc_port":                  6667,
         }
@@ -3748,6 +5664,7 @@ class MaiControlPanel:
                 var.set(str(value))
 
         self._refresh_monitor_meta_label()
+        self._refresh_monitor_mood_state()
         self._mark_dirty("monitor", False)
         self.log_queue.put("[ui] monitor config loaded")
         self._set_status("Monitor config loaded.", "ok")
@@ -3777,6 +5694,8 @@ class MaiControlPanel:
             monitor["ignore_command_messages"] = bool(self.monitor_vars["ignore_command_messages"].get())
             monitor["config_reload_seconds"]   = float(self.monitor_vars["config_reload_seconds"].get().strip() or 2)
             monitor["registry_flush_seconds"]  = int(self.monitor_vars["registry_flush_seconds"].get().strip() or 30)
+            monitor["mood_reroll_enabled"]    = bool(self.monitor_vars["mood_reroll_enabled"].get())
+            monitor["mood_reroll_seconds"]    = int(self.monitor_vars["mood_reroll_seconds"].get().strip() or 1200)
             monitor["irc_server"]              = self.monitor_vars["irc_server"].get().strip() or "irc.chat.twitch.tv"
             monitor["irc_port"]                = int(self.monitor_vars["irc_port"].get().strip() or 6667)
 

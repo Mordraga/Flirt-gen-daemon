@@ -112,18 +112,23 @@ def build_contextual_prompt(
     message: str,
     context: str,
     recent_messages: list[str] | None = None,
+    mood_context: dict | None = None,
 ) -> str:
     """Build a context-aware prompt for Mai."""
     identity: str = _p("identity", "You are Mai, a flirty chaos familiar.")
     guidance_map: dict[str, str] = _p("context_guidance", {})
     guidance = guidance_map.get(context, guidance_map.get("general", "React naturally."))
     recent_history_block = _format_recent_messages(username, recent_messages)
+    mood_name = str((mood_context or {}).get("name", "neutral")).strip() or "neutral"
+    mood_guidance = str((mood_context or {}).get("guidance", "")).strip() or "No special mood guidance."
+    mood_block = f"Current session mood: {mood_name}\nMood guidance: {mood_guidance}"
 
     return f"""{identity}
 
 {username} said: "{message}"
 Context detected: {context}
 {recent_history_block}
+{mood_block}
 
 {guidance}
 
@@ -153,10 +158,17 @@ def _generate_with_prompt(
     llm_backend,
     extra_guidance: str = "",
     recent_messages: list[str] | None = None,
+    mood_context: dict | None = None,
 ) -> str:
     """Shared response generation path with optional user-specific guidance."""
     context = detect_context(message)
-    prompt = build_contextual_prompt(username, message, context, recent_messages=recent_messages)
+    prompt = build_contextual_prompt(
+        username,
+        message,
+        context,
+        recent_messages=recent_messages,
+        mood_context=mood_context,
+    )
 
     if extra_guidance:
         prompt += f"\n\nSpecial instruction: {extra_guidance}"
@@ -183,6 +195,7 @@ def generate_contextual_response(
     llm_backend,
     owner_username: str = WITCH_USERNAME,
     recent_messages: list[str] | None = None,
+    mood_context: dict | None = None,
 ) -> str:
     """Generate a context-aware response using Mai's personality."""
     if is_mordraga(username, owner_username=owner_username):
@@ -192,6 +205,7 @@ def generate_contextual_response(
             llm_backend,
             owner_username=owner_username,
             recent_messages=recent_messages,
+            mood_context=mood_context,
         )
 
     return _generate_with_prompt(
@@ -199,6 +213,7 @@ def generate_contextual_response(
         message,
         llm_backend,
         recent_messages=recent_messages,
+        mood_context=mood_context,
     )
 
 
@@ -208,6 +223,7 @@ def mordraga_chat(
     llm_backend,
     owner_username: str = WITCH_USERNAME,
     recent_messages: list[str] | None = None,
+    mood_context: dict | None = None,
 ) -> str:
     """Owner-specific response path with stronger familiar-bond behavior."""
     owner_guidance: str = _p("owner_guidance", "Be extra loyal and affectionate, without being submissive.")
@@ -221,6 +237,7 @@ def mordraga_chat(
         llm_backend=llm_backend,
         recent_messages=recent_messages,
         extra_guidance=combined_guidance,
+        mood_context=mood_context,
     )
 
 

@@ -18,6 +18,14 @@ from mai_personality import (
 from monitor import AutonomousRateLimiter, LiveMonitorConfig
 from utils.helpers import atomic_write_json, load_config, load_json, load_keys, log_event, sanitize_path_component
 from utils.irc_utils import parse_privmsg as _parse_privmsg_line
+from utils.mood_engine import (
+    read_mood_state,
+    reroll_if_due,
+    resolve_effective_mood,
+    set_session_inactive,
+    start_monitor_session,
+    touch_heartbeat,
+)
 from utils.paths import Paths
 
 
@@ -34,6 +42,9 @@ class MaiMonitor:
         self.user_history = {}
         self.user_aliases: dict[str, str] = {}
         self.user_history_dir = Path(Paths.USER_HISTORY_DIR)
+        self.mood_state: dict = {}
+        self._last_mood_heartbeat_write = 0.0
+        self._last_locked_mood = ""
 
     def connect(self):
         """Connect to Twitch IRC."""
@@ -64,6 +75,101 @@ class MaiMonitor:
         """Hot-reload runtime settings and apply dependent values."""
         if self.settings.reload():
             self.rate_limiter.cooldown = self.settings.global_cooldown_seconds
+
+    def _initialize_mood_session(self) -> None:
+        self.mood_state = start_monitor_session(
+            reroll_enabled=self.settings.mood_reroll_enabled,
+            reroll_seconds=self.settings.mood_reroll_seconds,
+        )
+        self._last_mood_heartbeat_write = time.time()
+        self._last_locked_mood = str(self.mood_state.get("locked_mood", "")).strip().lower()
+        log_event(
+            "monitor_mood_started",
+            {
+                "session_id": self.mood_state.get("session_id", ""),
+                "active_mood": self.mood_state.get("active_mood", "neutral"),
+                "selected_by": self.mood_state.get("selected_by", "auto_start"),
+                "next_reroll_at": self.mood_state.get("next_reroll_at", 0.0),
+            },
+            Paths.AUTONOMOUS_HISTORY,
+        )
+        print(f"[Mai Mood] Session started: {self.mood_state.get('active_mood', 'neutral')}")
+
+    def _tick_mood_session(self) -> None:
+        if not self.mood_state:
+            return
+
+        session_id = str(self.mood_state.get("session_id", "")).strip()
+        disk_state = read_mood_state()
+        if session_id and str(disk_state.get("session_id", "")).strip() == session_id:
+            self.mood_state = disk_state
+
+        current_locked = str(self.mood_state.get("locked_mood", "")).strip().lower()
+        if current_locked != self._last_locked_mood:
+            if current_locked:
+                log_event(
+                    "monitor_mood_locked",
+                    {
+                        "session_id": session_id,
+                        "locked_mood": current_locked,
+                    },
+                    Paths.AUTONOMOUS_HISTORY,
+                )
+            elif self._last_locked_mood:
+                log_event(
+                    "monitor_mood_unlocked",
+                    {
+                        "session_id": session_id,
+                        "previous_locked_mood": self._last_locked_mood,
+                    },
+                    Paths.AUTONOMOUS_HISTORY,
+                )
+            self._last_locked_mood = current_locked
+
+        now = time.time()
+        if now - self._last_mood_heartbeat_write >= 5:
+            self.mood_state = touch_heartbeat(self.mood_state)
+            self._last_mood_heartbeat_write = now
+
+        self.mood_state, rerolled = reroll_if_due(
+            self.mood_state,
+            reroll_enabled=self.settings.mood_reroll_enabled,
+            reroll_seconds=self.settings.mood_reroll_seconds,
+        )
+        if rerolled:
+            log_event(
+                "monitor_mood_rerolled",
+                {
+                    "session_id": session_id,
+                    "active_mood": self.mood_state.get("active_mood", "neutral"),
+                    "selected_by": self.mood_state.get("selected_by", "auto_reroll"),
+                },
+                Paths.AUTONOMOUS_HISTORY,
+            )
+            print(f"[Mai Mood] Auto-rerolled -> {self.mood_state.get('active_mood', 'neutral')}")
+
+    def _shutdown_mood_session(self) -> None:
+        if not self.mood_state:
+            return
+        try:
+            self.mood_state = set_session_inactive(self.mood_state)
+            log_event(
+                "monitor_mood_session_ended",
+                {
+                    "session_id": self.mood_state.get("session_id", ""),
+                    "active_mood": self.mood_state.get("active_mood", "neutral"),
+                },
+                Paths.AUTONOMOUS_HISTORY,
+            )
+        except Exception as e:
+            log_event(
+                "monitor_mood_shutdown_error",
+                {
+                    "error": str(e),
+                    "session_id": self.mood_state.get("session_id", ""),
+                },
+                Paths.AUTONOMOUS_ERRORS,
+            )
 
     def _canonical_username(self, username: str) -> str:
         cleaned = str(username).strip() or "unknown_user"
@@ -175,6 +281,8 @@ class MaiMonitor:
         try:
             context = detect_context(message)
             print(f"[Mai Context] {context}")
+            mood_context = resolve_effective_mood("monitor", require_active_session=False)
+            print(f"[Mai Mood] {mood_context.get('name', 'neutral')} ({mood_context.get('source', 'fallback')})")
 
             if self._is_owner(username):
                 response = mordraga_chat(
@@ -183,6 +291,7 @@ class MaiMonitor:
                     llm_backend=ask_openrouter,
                     owner_username=self.settings.owner_username,
                     recent_messages=recent_messages,
+                    mood_context=mood_context,
                 )
             else:
                 response = generate_contextual_response(
@@ -191,6 +300,7 @@ class MaiMonitor:
                     llm_backend=ask_openrouter,
                     owner_username=self.settings.owner_username,
                     recent_messages=recent_messages,
+                    mood_context=mood_context,
                 )
 
             if response.startswith("WARNING:"):
@@ -246,10 +356,12 @@ class MaiMonitor:
             for name in self.user_history.keys()
             if str(name).strip()
         }
+        self._initialize_mood_session()
 
         while self.connected:
             try:
                 self.refresh_runtime_config()
+                self._tick_mood_session()
 
                 data = self.irc.recv(self.settings.check_buffer_size).decode("utf-8", errors="ignore")
                 if not data:
@@ -328,6 +440,7 @@ class MaiMonitor:
                 log_event("monitor_listen_error", {"error": str(e)}, Paths.AUTONOMOUS_ERRORS)
                 time.sleep(5)
 
+        self._shutdown_mood_session()
         atomic_write_json(Paths.USER_REGISTRY, self.user_history)
 
 
