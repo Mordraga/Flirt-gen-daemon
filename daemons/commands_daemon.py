@@ -132,6 +132,7 @@ def build_command_prompt(
         "command_context": command_data.get("context", ""),
         "command_usage": command_data.get("usage", f"!{command_key}"),
         "response_data": command_data.get("response_data", ""),
+        "url": command_data.get("url", ""),
         "command_args": command_args,
         "raw_input": raw_input,
     }
@@ -240,6 +241,10 @@ if __name__ == "__main__":
         response = ask_openrouter(prompt, spicy=False)
         if response.startswith("WARNING:"):
             raise RuntimeError(response)
+
+        url = command_cfg.get("url", "").strip()
+        if url:
+            response = f"{response} {url}"
 
         print(response)
         write_to_file(response, Paths.COMMAND_OUTPUT)

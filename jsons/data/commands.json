@@ -4,7 +4,7 @@
     "description": "Share social links for the stream community.",
     "context": "User asked where to find stream social accounts and community links.",
     "usage": "!social",
-    "response_data": "Discord: https://discord.gg/replace-me | X/Twitter: https://x.com/replace-me | YouTube: https://youtube.com/@replace-me",
+    "url": "discord.gg/replace-me | x.com/replace-me | youtube.com/@replace-me",
     "aliases": [
       "socials"
     ]
@@ -14,7 +14,7 @@
     "description": "Share the Discord invite link.",
     "context": "User asked how to join the community Discord.",
     "usage": "!discord",
-    "response_data": "Discord invite: https://discord.gg/replace-me",
+    "url": "discord.gg/replace-me",
     "aliases": [
       "disc"
     ]

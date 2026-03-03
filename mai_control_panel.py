@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import colorchooser, messagebox, simpledialog, ttk
 
-from chat_analytics import analyze_activity, find_highlights, load_chat_log
+from utils.chat_analytics import analyze_activity, find_highlights, load_chat_log
 from utils.cooldown_messages import load_tool_cooldown_map, save_tool_cooldown_map
 from utils.helpers import atomic_write_json, load_json, resolve_existing_path
 from utils.mood_engine import (
@@ -3320,6 +3320,7 @@ class MaiControlPanel:
             path=Paths.COMMANDS,
             fields=[
                 ("Key", "key"),
+                ("URL", "url"),
                 ("Minimum Tier", "min_level"),
                 ("Description", "description"),
                 ("Context", "context"),
@@ -4033,9 +4034,14 @@ class MaiControlPanel:
 
         folder_value_var = tk.StringVar(value="flirt")
         ttk.Label(form_frame, text="Folder (tool, fixed)").grid(row=1, column=0, sticky="w", padx=8, pady=4)
-        ttk.Entry(form_frame, textvariable=folder_value_var, state="readonly", width=24).grid(
-            row=1, column=1, sticky="w", padx=8, pady=4
+        folder_combo = ttk.Combobox(
+            form_frame,
+            textvariable=folder_value_var,
+            values=["flirt", "tarot"],
+            state="readonly",
+            width=24,
         )
+        folder_combo.grid(row=1, column=1, sticky="w", padx=8, pady=4)
 
         selected_index: dict[str, int | None] = {"value": None}
 

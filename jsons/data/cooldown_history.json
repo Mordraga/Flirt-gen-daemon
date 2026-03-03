@@ -5,6 +5,8 @@
       "Astarte said I was being to flirty. Give me {remaining} to calm down.",
       "Patience, darling! {remaining} until I'm ready to sweep you off your feet again."
     ],
-    "tarot": []
+    "tarot": [
+      "Your spread is on cooldown for {remaining}. Let the arcana breathe a moment."
+    ]
   }
 }
