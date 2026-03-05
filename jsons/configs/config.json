@@ -2,7 +2,7 @@
   "Mai-config": {
     "backend": "openrouter",
     "model": "gryphe/mythomax-l2-13b",
-    "max_tokens": 60,
+    "max_tokens": 150,
     "temperature_normal": 0.85,
     "temperature_spicy": 0.95,
     "timeout": 30

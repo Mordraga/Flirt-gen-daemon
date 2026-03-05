@@ -75,15 +75,34 @@ def build_prompt_from_keyword(
     registry: Mapping[str, Any] | None = None,
     templates: Mapping[str, Any] | None = None,
 ) -> str:
-    template = get_prompt_template(keyword, registry=registry, templates=templates)
+    template_data = templates if templates is not None else load_json(Paths.PROMPT_TEMPLATES, default={})
+    registry_data = registry if registry is not None else load_json(Paths.REGISTRY, default={})
+
+    # Always inject owner_username from personality so all templates can reference it
+    personality = load_json(Paths.PERSONALITY, default={})
+    normalized_context = _normalize_context(context)
+    normalized_context.setdefault("owner_username", personality.get("owner_username", ""))
+    safe = _TemplateSafeDict(normalized_context)
+
+    template_key = _resolve_template_key(keyword, registry_data)
+    entry = template_data.get(template_key) or template_data.get(keyword)
+    base = template_data.get("base", "")
+    task = template_data.get("tasks", {}).get(keyword, "")
+
+    # New-style: base + tasks map both exist for this keyword
+    if base and task and isinstance(entry, Mapping):
+        safe["task"] = task
+        body = str(entry.get("template") or entry.get("prompt") or "")
+        return (base.format_map(safe) + "\n\n" + body.format_map(safe)).strip()
+
+    # Old-style fallback: plain string template or no base/task defined
+    template = get_prompt_template(keyword, registry=registry_data, templates=template_data)
     if not template:
         return (
             f"WARNING: Missing prompt template for keyword '{keyword}' "
             f"in {Paths.PROMPT_TEMPLATES}"
         )
-
-    normalized_context = _normalize_context(context)
-    return template.format_map(_TemplateSafeDict(normalized_context)).strip()
+    return template.format_map(safe).strip()
 
 
 # =============================

@@ -1,4 +1,5 @@
 import random
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -9,6 +10,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from engine import ask_openrouter, build_prompt_from_keyword
 from utils.helpers import load_json, log_event, write_to_file
 from utils.paths import Paths
+
+_URL_PATTERN = re.compile(
+    r'(?:https?://|www\.)\S+'                                           # http/https/www prefix
+    r'|\b\w[\w\-]*\.(?:com|net|org|gg|tv|io|co|me|ly|app|dev|ai|xyz)'  # bare domain.tld
+    r'(?:/\S*)?',                                                        # optional path
+    re.IGNORECASE,
+)
+
+
+def _strip_urls(text: str) -> str:
+    """Remove any URLs the model may have generated despite instructions."""
+    cleaned = _URL_PATTERN.sub('', text)
+    return ' '.join(cleaned.split())
+
 
 ROLE_ORDER = {
     "normal": 0,
@@ -242,6 +257,7 @@ if __name__ == "__main__":
         if response.startswith("WARNING:"):
             raise RuntimeError(response)
 
+        response = _strip_urls(response)
         url = command_cfg.get("url", "").strip()
         if url:
             response = f"{response} {url}"

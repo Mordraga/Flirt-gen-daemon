@@ -1,8 +1,8 @@
 {
   "social": {
     "min_level": "normal",
-    "description": "Share social links for the stream community.",
-    "context": "User asked where to find stream social accounts and community links.",
+    "description": "The stream's social platforms — Discord, X, and YouTube.",
+    "context": "User wants to find and follow the stream's community spaces.",
     "usage": "!social",
     "url": "discord.gg/replace-me | x.com/replace-me | youtube.com/@replace-me",
     "aliases": [
@@ -11,8 +11,8 @@
   },
   "discord": {
     "min_level": "normal",
-    "description": "Share the Discord invite link.",
-    "context": "User asked how to join the community Discord.",
+    "description": "The stream's Discord community server.",
+    "context": "User wants to join the community Discord.",
     "usage": "!discord",
     "url": "discord.gg/replace-me",
     "aliases": [
@@ -21,10 +21,10 @@
   },
   "about": {
     "min_level": "normal",
-    "description": "Briefly explain what this channel is about.",
+    "description": "A command that gives a short introduction to what the stream is about.",
     "context": "User asked for a short stream/channel introduction.",
     "usage": "!about",
-    "response_data": "Mai is the channel AI companion. The stream blends games, chat, tarot, and chaotic vibe checks.",
+    "response_data": "The stream blends games, chat, tarot, and chaotic vibe checks.",
     "aliases": []
   }
 }
